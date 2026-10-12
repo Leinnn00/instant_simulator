@@ -144,13 +144,13 @@ svg text{font-family:var(--font)}
         </div>
         <div class="legend">
           <span><i class="rampbar"></i><span class="num">−75</span>〜<span class="num">−40 dBm</span></span>
-          <span><i class="sw" style="background:var(--tx);height:2px"></i>ビーム（中心±13°、濃いほど強い）</span>
+          <span><i class="sw" style="background:var(--tx);height:2px"></i>ビーム（太線が中心、細線が半値幅±7.5°の範囲）</span>
           <span><i class="sw" style="background:var(--plate)"></i>反射板</span>
           <span><i class="sw" style="background:var(--install)"></i>設置できる壁</span>
           <span><i class="sw" style="background:var(--wall);height:5px"></i>金属</span>
           <span><i class="dot" style="border:2px solid var(--ink);width:11px;height:11px"></i>下位6点（対処後）</span>
         </div>
-        <p class="hint">板はドラッグで移動、送信機の先の丸をドラッグでビーム方向。受信点をクリックすると、その点に届く経路を表示します。紫の線はビームを鏡のように反射させてたどったもので、棚の端での回り込み（回折）は描いていません。</p>
+        <p class="hint">板はドラッグで移動、送信機の先の丸をドラッグでビーム方向。受信点をクリックすると、その点に届く経路を表示します。紫の太線はビームの中心、細線は半値幅（±7.5°）の範囲で、鏡のように反射させてたどったものです。棚の端での回り込み（回折）は描いていません。</p>
       </div>
 
       <div class="panel">
@@ -398,7 +398,7 @@ const PMC = (function(){
           const qx=s.x1-ox, qy=s.y1-oy; const t=(qx*s.dy-qy*s.dx)/den, u=(qx*dy-qy*dx)/den;
           if(t>1e-6&&u>=0&&u<=1&&(!best||t<best.t)) best={t,i}; }
         if(!best) break;
-        const hx=ox+dx*best.t, hy=oy+dy*best.t; legs.push({x1:ox,y1:oy,x2:hx,y2:hy,db,k}); len+=best.t;
+        const hx=ox+dx*best.t, hy=oy+dy*best.t; legs.push({x1:ox,y1:oy,x2:hx,y2:hy,db,k,a:Math.round(a*100)/100}); len+=best.t;
         const s=segs[best.i]; const dn=dx*s.nx+dy*s.ny;
         if(s.mat==='m') db-=0; else db+=Math.min(-0.5,10*Math.log10(gypsumR2(Math.abs(dn),o.er,o.ei))-o.wallAdj);
         dx-=2*dn*s.nx; dy-=2*dn*s.ny; ox=hx; oy=hy;
@@ -498,8 +498,11 @@ function drawPlan(){
   gBeam.innerHTML=''; const T=PMC.TX;
   if(state.showBeam){
     const legs=PMC.beamRays(state.plates,{beam:state.beam,wallAdj:state.wallAdj,span:13,step:1});
-    legs.sort((a,b)=>a.db-b.db).forEach(l=>{ const op=Math.min(.85,.85*(1+l.db/18)); if(op<.05) return;
-      el('line',{x1:X(l.x1).toFixed(1),y1:Y(l.y1).toFixed(1),x2:X(l.x2).toFixed(1),y2:Y(l.y2).toFixed(1),stroke:'var(--tx)','stroke-opacity':op.toFixed(2),'stroke-width':l.k===0?1.6:1.2,'stroke-linecap':'round'},gBeam); });
+    // 半値幅（±7.5°）の内側を主に描き、外側はごく薄く。中心の1本は太線で強調
+    const line=(l,op,w)=>el('line',{x1:X(l.x1).toFixed(1),y1:Y(l.y1).toFixed(1),x2:X(l.x2).toFixed(1),y2:Y(l.y2).toFixed(1),stroke:'var(--tx)','stroke-opacity':op.toFixed(2),'stroke-width':w,'stroke-linecap':'round'},gBeam);
+    legs.sort((a,b)=>a.db-b.db).forEach(l=>{ if(l.a===0) return; const inside=Math.abs(l.a)<=7.5;
+      let op=Math.min(.6,.6*(1+l.db/18)); if(!inside) op*=0.18; if(op<.03) return; line(l,op,inside?1.2:1); });
+    legs.filter(l=>l.a===0).forEach(l=>{ const op=Math.max(.35,Math.min(1,1+l.db/24)); line(l,op,3); });
   }
   const th=state.beam*Math.PI/180, hx=X(T.x+1.3*Math.cos(th)), hy=Y(T.y+1.3*Math.sin(th));
   el('line',{x1:X(T.x),y1:Y(T.y),x2:hx,y2:hy,stroke:'var(--tx)','stroke-width':1.5,'stroke-dasharray':'5 4'},gBeam);
