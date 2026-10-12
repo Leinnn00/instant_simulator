@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="PMC7（第7回電波伝搬モデリングコンペティション）の評価部屋で、反射板の配置とビーム方向を試す簡易2Dレイトレーサー">
+<title>PMC7 反射板シミュレーター</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* レイアウト: 左に平面図（操作する計器）、右に評価値と操作。狭い画面では縦に積む */
+:root{
+  --bg:#f1f4f6; --surface:#fcfcfb; --ink:#0f1720; --ink2:#4b5560; --muted:#87919a; --line:#d6dbdf;
+  --wall:#27313b; --gyp:#a3acb4; --plate:#eb6834; --tx:#4a3aa7; --after:#2a78d6; --base:#8a939c; --install:#1baf7a;
+  --ray:#0f1720; --ring:#fcfcfb;
+  --s0:#cde2fb; --s1:#9ec5f4; --s2:#6da7ec; --s3:#3987e5; --s4:#256abf; --s5:#184f95; --s6:#0d366b;
+  --font:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#111416; --surface:#1a1d1f; --ink:#f2f4f5; --ink2:#c0c6cb; --muted:#868e95; --line:#32383d;
+  --wall:#d5dade; --gyp:#69727a; --plate:#e8703f; --tx:#9085e9; --after:#3987e5; --base:#868e95; --install:#199e70;
+  --ray:#f2f4f5; --ring:#1a1d1f;
+  --s0:#0d366b; --s1:#184f95; --s2:#256abf; --s3:#3987e5; --s4:#6da7ec; --s5:#9ec5f4; --s6:#cde2fb;
+  color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#111416; --surface:#1a1d1f; --ink:#f2f4f5; --ink2:#c0c6cb; --muted:#868e95; --line:#32383d;
+  --wall:#d5dade; --gyp:#69727a; --plate:#e8703f; --tx:#9085e9; --after:#3987e5; --base:#868e95; --install:#199e70;
+  --ray:#f2f4f5; --ring:#1a1d1f;
+  --s0:#0d366b; --s1:#184f95; --s2:#256abf; --s3:#3987e5; --s4:#6da7ec; --s5:#9ec5f4; --s6:#cde2fb;
+  color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.6;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header h1{font-size:22px;font-weight:700;margin:0;letter-spacing:.01em;text-wrap:balance}
+header p{margin:2px 0 0;color:var(--ink2);max-width:62ch}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;min-width:0}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+h2{font-size:13px;font-weight:700;margin:0 0 8px;color:var(--ink2);letter-spacing:.04em}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.scores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+.score{padding:2px 12px;border-left:1px solid var(--line)}
+.score:first-child{border-left:0;padding-left:0}
+.score .k{font-size:12px;color:var(--ink2)}
+.score .v{font-family:var(--mono);font-size:26px;font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums}
+.score .u{font-size:12px;color:var(--muted);font-family:var(--font);margin-left:3px}
+.score .s{font-size:11.5px;color:var(--muted);min-height:1.5em}
+@media (max-width:460px){.score .v{font-size:20px}.score{padding:2px 8px}}
+.status{font-size:12px;color:var(--muted);margin-top:8px;min-height:1.6em}
+#plan{width:100%;height:auto;display:block;touch-action:none;user-select:none}
+.planbar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-bottom:6px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink2);margin-top:6px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{display:inline-block;width:14px;height:4px;border-radius:2px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%}
+.rampbar{display:inline-block;width:90px;height:8px;border-radius:2px;background:linear-gradient(90deg,var(--s0),var(--s1),var(--s2),var(--s3),var(--s4),var(--s5),var(--s6))}
+button,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--after);outline-offset:2px}
+button.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row label{font-size:13px;color:var(--ink2)}
+input[type=range]{flex:1 1 120px;min-width:90px;accent-color:var(--after)}
+.val{font-family:var(--mono);min-width:5ch;text-align:right;font-variant-numeric:tabular-nums}
+.plates{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.plate{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-top:1px solid var(--line)}
+.prow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.prow.sub{font-size:12px;color:var(--muted);padding-left:28px}
+.badge{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:var(--plate);color:#fff;font-family:var(--mono);font-size:11px;font-weight:500;flex:none}
+.plate select,.plate button{padding:3px 6px;font-size:12.5px}
+.plate .ax{margin-left:4px;color:var(--ink2)}
+.plate .pos{width:6.2em;font-size:13px;padding:3px 4px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink);text-align:right}
+.plate .nudge{min-width:28px;font-family:var(--mono)}
+.plate .unit{color:var(--muted);font-size:12px}
+.plate .del{margin-left:auto}
+.plate .tv{min-width:3.5ch;text-align:right;color:var(--ink2)}
+.plate .rng{flex:1 1 100%;font-family:var(--mono);font-size:11.5px}
+.prow.sub input[type=range]{flex:1 1 90px;min-width:70px}
+.hint{font-size:12px;color:var(--muted);margin:4px 0 0}
+details{font-size:13px}
+details summary{cursor:pointer;color:var(--ink2);font-weight:500}
+details .body{padding-top:8px;display:flex;flex-direction:column;gap:8px}
+#chart{width:100%;height:auto;display:block}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;line-height:1.5;padding:6px 8px;border-radius:4px;white-space:nowrap;z-index:5;transform:translate(-50%,-100%);margin-top:-10px}
+.rel{position:relative}
+.paths{font-size:12.5px;margin:6px 0 0;padding:0;list-style:none}
+.paths li{display:flex;justify-content:space-between;gap:10px;padding:2px 0;border-top:1px solid var(--line)}
+.paths li span:first-child{min-width:0;overflow-wrap:anywhere}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:3px 8px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+.tablewrap{overflow-x:auto}
+.saverow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.saverow input[type=text]{flex:1 1 180px;min-width:0;font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink)}
+.linkrow{display:flex;gap:8px;align-items:center;margin-top:8px}
+.linkrow input{flex:1 1 auto;min-width:0;font-family:var(--mono);font-size:12px;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink2)}
+.msg{font-size:12px;color:var(--install);min-height:1.4em}
+#cmp td,#cmp th{white-space:nowrap}
+#cmp td.nm{white-space:normal;min-width:8em;text-align:left}
+#cmp tr.cur td{background:var(--bg)}
+#cmp td.best{font-weight:700;color:var(--ink)}
+#cmp td.act{text-align:right}
+#cmp td.act div{display:inline-flex;gap:4px}
+#cmp td.act button{padding:2px 7px;font-size:12px}
+.empty{color:var(--muted);font-size:13px;margin:6px 0 0}
+.notes{color:var(--ink2);font-size:13px;max-width:70ch}
+.notes ul{margin:4px 0 0;padding-left:1.2em}
+svg text{font-family:var(--font)}
+</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>PMC7 反射板シミュレーター</h1>
+    <p>反射板をドラッグし、ビームの向きを変えると、24点の受信電力と評価指標が計算し直されます。平面（高さ1.6 m）だけを見る簡易モデルです。</p>
+  </header>
+
+  <div class="panel">
+        <h2>評価指標</h2>
+        <div class="scores">
+          <div class="score"><div class="k">エリア平均改善量</div><div class="v"><span id="mAvg">–</span><span class="u">dB</span></div><div class="s">ΔP_avg（24点）</div></div>
+          <div class="score"><div class="k">デッドスポット改善量</div><div class="v"><span id="mLow">–</span><span class="u">dB</span></div><div class="s" id="mLowSub">ΔP_low</div></div>
+          <div class="score"><div class="k">実装面積</div><div class="v"><span id="mA">–</span><span class="u">m²</span></div><div class="s" id="mASub">A_total</div></div>
+        </div>
+        <div class="status" id="status" aria-live="polite"></div>
+      </div>
+
+
+  <div class="grid">
+    <div class="col">
+      <div class="panel">
+        <div class="planbar">
+          <h2 style="margin:0;flex:1 1 auto">評価部屋（上がA壁）</h2>
+          <button id="heatBtn" type="button" aria-pressed="false">部屋全体の強さを塗る</button>
+        </div>
+        <div class="rel" id="planWrap">
+          <svg id="plan" viewBox="-84 -40 844 744" role="img" aria-label="評価部屋の平面図。反射板、送信機、24の受信点を表示"></svg>
+          <div class="tip" id="tip" hidden></div>
+        </div>
+        <div class="legend">
+          <span><i class="rampbar"></i><span class="num">−75</span>〜<span class="num">−40 dBm</span></span>
+          <span><i class="sw" style="background:var(--plate)"></i>反射板</span>
+          <span><i class="sw" style="background:var(--install)"></i>設置できる壁</span>
+          <span><i class="sw" style="background:var(--wall);height:5px"></i>金属</span>
+          <span><i class="dot" style="border:2px solid var(--ink);width:11px;height:11px"></i>下位6点（対処後）</span>
+        </div>
+        <p class="hint">板はドラッグで移動、送信機の先の丸をドラッグでビーム方向。受信点をクリックすると、その点に届く経路を表示します。</p>
+      </div>
+
+      <div class="panel">
+        <h2>24点の受信電力（基準 → 対処後）</h2>
+        <div class="rel" id="chartWrap">
+          <svg id="chart" viewBox="0 0 640 250" role="img" aria-label="受信点ごとの基準環境と対処後の受信電力"></svg>
+          <div class="tip" id="tip2" hidden></div>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--base)"></i>基準環境（実測値）</span>
+          <span><i class="dot" style="background:var(--after)"></i>対処後</span>
+        </div>
+        <details style="margin-top:8px">
+          <summary>数値の表</summary>
+          <div class="body tablewrap"><table id="tbl"></table></div>
+        </details>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2>配置の例</h2>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <div class="panel">
+        <h2>ビーム方向</h2>
+        <div class="row">
+          <input type="range" id="beam" min="0" max="359" step="1" value="180" aria-label="ビームの方位角">
+          <span class="val" id="beamVal">180°</span>
+          <button id="optBtn" type="button">最良の向きを探す</button>
+        </div>
+        <p class="hint">180° が D壁の正面（基準環境）、270° が C壁の正面です。</p>
+      </div>
+
+      <div class="panel">
+        <h2>反射板（60 × 40 cm、最大6枚）</h2>
+        <div class="plates" id="plates"></div>
+        <button id="addBtn" type="button">板を追加</button>
+        <p class="hint">座標は板の中心の位置で、原点は D壁と C壁の角（図の左下）です。C壁・A壁は x、D壁は y で動きます。矢印は5 cmずつ、Shift を押しながらで1 cmずつ。傾きは壁からの角度で、0° が壁にぴったりです。</p>
+      </div>
+
+      <div class="panel" id="pathPanel">
+        <h2 id="pathTitle">経路</h2>
+        <p class="hint" id="pathHint" style="margin:0">平面図の受信点をクリックすると、強い順に経路を並べます。</p>
+        <ul class="paths" id="paths"></ul>
+      </div>
+
+      <div class="panel">
+        <details>
+          <summary>モデルの設定と限界</summary>
+          <div class="body">
+            <div class="row"><label for="order">反射の回数</label>
+              <select id="order"><option value="3">3回まで（速い）</option><option value="4" selected>4回まで</option><option value="5">5回まで（遅い）</option></select></div>
+            <div class="row"><label for="wadj">壁の反射の強さ</label>
+              <input type="range" id="wadj" min="0" max="10" step="1" value="6" aria-label="壁の反射の強さ補正">
+              <span class="val" id="wadjVal">+6 dB</span></div>
+            <div class="notes">
+              <div id="fit"></div>
+              <ul>
+                <li>鏡像法で反射を追い、棚の端はナイフエッジ回折で近似しています。電力は位相を無視して足しています（20 MHz 平均の代わり）。</li>
+                <li>天井・床の反射、板の大きさによる広がり、散乱は入っていません。数 dB の差は信用できません。</li>
+                <li>「壁の反射の強さ」は、石膏ボードの理論値に足す補正です。実測に合うよう +6 dB にしてあります。0 にすると壁がほとんど反射しない場合の結果になります。</li>
+                <li>基準環境の値は配布資料の実測値をそのまま使っています。対処後の値は「実測値＋モデルが計算した変化量」です。</li>
+                <li>「部屋全体の強さを塗る」はモデルだけの値なので、点の色と少しずれることがあります。</li>
+              </ul>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>案の保存と比較</h2>
+    <div class="saverow">
+      <input type="text" id="planName" maxlength="40" placeholder="案の名前（例：C壁中央2枚）" aria-label="保存する案の名前">
+      <button type="button" id="saveBtn">いまの配置を保存</button>
+      <button type="button" id="linkBtn">いまの配置のリンクをコピー</button>
+    </div>
+    <div class="linkrow" id="linkRow" hidden><input type="text" id="linkOut" readonly aria-label="共有リンク"></div>
+    <div class="msg" id="msg" aria-live="polite"></div>
+    <div class="tablewrap"><table id="cmp"></table></div>
+    <p class="hint">保存した案はこのブラウザにだけ残ります。メンバーに渡すときはリンクを送ってください。リンクを開くと同じ配置とビーム方向が再現されます。指標は今のモデル設定で計算し直しています。</p>
+  </div>
+</div>
+
+<script>
+// PMC7 簡易2Dレイトレーサー（鏡像法＋棚端ナイフエッジ回折）
+const PMC = (function(){
+  const F = 24.15e9, LAM = 299792458/F, EIRP = 32, GRX = 3;
+  const TX = {x:6.04, y:2.0};
+  const SHELF = {x1:2.56, x2:3.01, y1:2.71};
+  const CORNERS = [{x:3.01,y:2.71},{x:2.56,y:2.71}];
+  const MEAS = [-56.04,-56.43,-58.24,-59.17,-65.46,-62.68,-58.59,-60.40,-62.43,-60.45,-60.74,-52.75,-54.12,-51.75,-58.21,-63.59,-65.70,-59.32,-65.38,-62.19,-62.01,-64.81,-58.25,-54.17];
+  const RX = [];
+  (function(){
+    const ys=[2.97,3.47,3.97,4.47,4.97,5.47];
+    const cols=[[1.92,[1,2,3,4,5,6]],[1.42,[12,11,10,9,8,7]],[0.92,[13,14,15,16,17,18]],[0.42,[24,23,22,21,20,19]]];
+    for(const [x,l] of cols) l.forEach((n,i)=>{RX[n-1]={n,x,y:ys[i]};});
+  })();
+  // 壁: [x1,y1,x2,y2,材質,設置可, 名前]
+  const WALLS = [
+    [0.35,0,2.18,0,'g',1,'C'],[2.18,0,3.56,0,'m',1,'C'],[3.56,0,5.46,0,'g',1,'C'],
+    [5.46,0,5.46,0.85,'g',0,''],[5.46,0.85,7.04,0.85,'g',1,'C'],
+    [7.04,0.85,7.04,5.99,'g',0,'B'],[7.04,5.99,6.66,5.99,'g',0,''],[6.66,5.99,6.66,6.31,'g',0,''],
+    [6.66,6.31,3.01,6.31,'m',0,'A'],
+    [3.01,6.31,3.01,2.71,'s',0,''],[3.01,2.71,2.56,2.71,'s',0,''],[2.56,2.71,2.56,6.31,'s',0,''],
+    [2.56,6.31,0.39,6.31,'m',1,'A'],
+    [0.39,6.31,0.39,5.99,'g',0,''],[0.39,5.99,0,5.99,'g',0,''],
+    [0,5.99,0,5.09,'g',1,'D'],
+    [0,5.09,0.2,5.09,'m',0,''],[0.2,5.09,0.2,4.39,'m',0,''],[0.2,4.39,0,4.39,'m',0,''],
+    [0,4.39,0,0.70,'g',1,'D'],
+    [0,0.70,0.35,0.70,'g',0,''],[0.35,0.70,0.35,0,'g',0,'']
+  ];
+  const NAMES = ["C壁", "金属扉", "C壁", "柱", "C壁(B寄り)", "B壁", "柱", "柱", "A壁(窓)", "棚", "棚", "棚", "A壁(窓)", "柱", "柱", "D壁", "設備盤", "設備盤", "設備盤", "D壁", "柱", "柱"];
+  // 板を貼れる壁（室内から見て反時計回り）: [x1,y1,x2,y2,名前,座標軸]
+  const GROUPS = [[0.35,0,5.46,0,'C壁','x'],[5.46,0.85,7.04,0.85,'C壁(B寄り)','x'],[2.56,6.31,0.39,6.31,'A壁左','x'],[0,5.99,0,5.09,'D壁(上)','y'],[0,4.39,0,0.70,'D壁','y']];
+  let PATTERN = null;
+  function setPattern(p){ PATTERN = p; }
+  function patGain(deg){ // deg: ビーム中心からの角度
+    let a = ((deg+180)%360+360)%360 - 180; const i=Math.floor(a+180), f=a+180-i;
+    const g0=PATTERN[Math.min(360,Math.max(0,i))], g1=PATTERN[Math.min(360,i+1)];
+    return g0+(g1-g0)*f;
+  }
+  // 石膏ボードの反射（TE偏波・半無限媒質のフレネル）: |Γ|^2
+  function gypsumR2(cosI, er, ei){
+    const s2 = 1-cosI*cosI; const a=er-s2, b=-ei;
+    const m=Math.sqrt(Math.hypot(a,b)), ph=Math.atan2(b,a)/2;
+    const qr=m*Math.cos(ph), qi=m*Math.sin(ph);
+    const nr=cosI-qr, ni=-qi, dr=cosI+qr, di=qi;
+    return (nr*nr+ni*ni)/(dr*dr+di*di);
+  }
+  function knifeDb(v){ if(v<=-0.78) return 0; const t=v-0.1; return 6.9+20*Math.log10(Math.sqrt(t*t+1)+t); }
+  function plateSeg(p){ // p:{wall,s,tilt,len} → 線分
+    const w=GROUPS[p.wall]; const L=p.len||0.6;
+    const wx=w[2]-w[0], wy=w[3]-w[1], wl=Math.hypot(wx,wy), ux=wx/wl, uy=wy/wl;
+    const nx=-uy, ny=ux; // 部屋内側の法線（頂点は反時計回り）
+    const off=0.008; const th=(p.tilt||0)*Math.PI/180;
+    const s0=Math.max(0,Math.min(wl-L*Math.cos(th),p.s));
+    let ax,ay,bx,by;
+    const c=Math.cos(th), sn=Math.sin(Math.abs(th));
+    if(th>=0){ ax=w[0]+ux*s0; ay=w[1]+uy*s0; bx=ax+ux*L*c+nx*L*sn; by=ay+uy*L*c+ny*L*sn; }
+    else { bx=w[0]+ux*(s0+L*c); by=w[1]+uy*(s0+L*c); ax=bx-ux*L*c+nx*L*sn; ay=by-uy*L*c+ny*L*sn; }
+    return {x1:ax+nx*off,y1:ay+ny*off,x2:bx+nx*off,y2:by+ny*off,mat:'m',occ:true,plate:true,d:L*sn,L};
+  }
+  function buildScene(plates){
+    const segs = WALLS.map(w=>({x1:w[0],y1:w[1],x2:w[2],y2:w[3],mat:w[4]==='s'?'m':w[4],occ:w[4]!=='s'}));
+    for(const p of (plates||[])) segs.push(plateSeg(p));
+    for(const s of segs){ const dx=s.x2-s.x1, dy=s.y2-s.y1, l=Math.hypot(dx,dy); s.dx=dx; s.dy=dy; s.len=l; s.nx=-dy/l; s.ny=dx/l; }
+    return segs;
+  }
+  function mirror(px,py,s){ const t=(px-s.x1)*s.nx+(py-s.y1)*s.ny; return [px-2*t*s.nx, py-2*t*s.ny]; }
+  // 線分 a→b と seg の交点パラメータ（a→b上のt, seg上のu）
+  function isect(ax,ay,bx,by,s){
+    const rx=bx-ax, ry=by-ay, den=rx*s.dy-ry*s.dx; if(Math.abs(den)<1e-12) return null;
+    const qx=s.x1-ax, qy=s.y1-ay; const t=(qx*s.dy-qy*s.dx)/den, u=(qx*ry-qy*rx)/den; return [t,u];
+  }
+  function blocked(ax,ay,bx,by,segs,skipA,skipB){
+    for(let i=0;i<segs.length;i++){ const s=segs[i]; if(!s.occ||i===skipA||i===skipB) continue;
+      const r=isect(ax,ay,bx,by,s); if(!r) continue;
+      if(r[0]>1e-6&&r[0]<1-1e-6&&r[1]>-1e-9&&r[1]<1+1e-9) return true; }
+    return false;
+  }
+  // 棚端の回折: 経路全体の展開距離で ν を計算
+  function shelfLoss(pts,total){
+    let loss=0, acc=0;
+    for(let i=0;i<pts.length-1;i++){
+      const ax=pts[i][0], ay=pts[i][1], bx=pts[i+1][0], by=pts[i+1][1];
+      const ll=Math.hypot(bx-ax,by-ay); const lo=Math.min(ax,bx), hi=Math.max(ax,bx);
+      let vmax=-99;
+      for(const c of CORNERS){
+        if(!(c.x>lo+1e-6&&c.x<hi-1e-6)) continue;
+        const t=(c.x-ax)/(bx-ax); const yl=ay+(by-ay)*t;
+        const h=(yl-c.y)*Math.abs(bx-ax)/ll; // 線が角より北側(棚側)なら正
+        const d1=acc+t*ll, d2=total-d1; if(d1<=0||d2<=0) continue;
+        const v=h*Math.sqrt(2*total/(LAM*d1*d2)); if(v>vmax) vmax=v;
+      }
+      if(vmax>-99) loss+=knifeDb(vmax);
+      acc+=ll;
+    }
+    return loss;
+  }
+  function trace(segs, rx, opt){
+    const o=Object.assign({order:3,beam:180,er:2.73,ei:0.126,wallAdj:0,metalDb:0,keepPaths:false,minDb:-110},opt||{});
+    const N=segs.length, T=TX; let pw=0; const paths=[];
+    const mats=segs.map(s=>s.mat);
+    function finish(seq,pts){
+      let total=0; for(let i=0;i<pts.length-1;i++) total+=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);
+      let db=EIRP+GRX-20*Math.log10(4*Math.PI*total/LAM);
+      const az=Math.atan2(pts[1][1]-T.y,pts[1][0]-T.x)*180/Math.PI;
+      db+=patGain(az-o.beam);
+      for(let k=0;k<seq.length;k++){
+        const s=segs[seq[k]]; if(mats[seq[k]]==='m'){ db-=o.metalDb; continue; }
+        const ix=pts[k+1][0]-pts[k][0], iy=pts[k+1][1]-pts[k][1], il=Math.hypot(ix,iy);
+        const cosI=Math.abs((ix*s.nx+iy*s.ny)/il);
+        db+=Math.min(-0.5,10*Math.log10(gypsumR2(cosI,o.er,o.ei))-o.wallAdj);
+      }
+      if(db<o.minDb) return;
+      const dl=shelfLoss(pts,total); if(dl>45) return; db-=dl;
+      if(db<o.minDb) return;
+      pw+=Math.pow(10,db/10);
+      if(o.keepPaths) paths.push({db,pts,seq:seq.slice()});
+    }
+    // 直接波
+    if(!blocked(T.x,T.y,rx.x,rx.y,segs,-1,-1)) finish([],[[T.x,T.y],[rx.x,rx.y]]);
+    const seq=[], imgs=[[T.x,T.y]];
+    function back(){ // 受信点から鏡像を逆にたどって反射点を決める
+      const n=seq.length; const pts=new Array(n+2); pts[n+1]=[rx.x,rx.y]; pts[0]=[T.x,T.y];
+      let tx=rx.x, ty=rx.y;
+      for(let k=n-1;k>=0;k--){ const s=segs[seq[k]], I=imgs[k+1];
+        const r=isect(I[0],I[1],tx,ty,s);
+        if(!(r&&r[0]>1e-9&&r[0]<1-1e-9&&r[1]>=0&&r[1]<=1)) return;
+        tx=s.x1+s.dx*r[1]; ty=s.y1+s.dy*r[1]; pts[k+1]=[tx,ty]; }
+      for(let k=0;k<=n;k++){ if(blocked(pts[k][0],pts[k][1],pts[k+1][0],pts[k+1][1],segs,k>0?seq[k-1]:-1,k<n?seq[k]:-1)) return; }
+      finish(seq.slice(),pts);
+    }
+    function rec(depth){
+      const I=imgs[depth], last=depth>0?seq[depth-1]:-1;
+      for(let i=0;i<N;i++){ if(i===last) continue; const s=segs[i];
+        const side=(I[0]-s.x1)*s.nx+(I[1]-s.y1)*s.ny;
+        if(!s.plate&&side<=1e-9) continue; // 壁は室内側からしか反射しない
+        // 受信点も同じ側にいる必要がある（最終反射のとき）
+        seq.push(i); imgs.push(mirror(I[0],I[1],s));
+        const rs=(rx.x-s.x1)*s.nx+(rx.y-s.y1)*s.ny;
+        if(s.plate ? (rs*side>0) : (rs>0)) back();
+        if(depth+1<o.order) rec(depth+1);
+        seq.pop(); imgs.pop();
+      }
+    }
+    if(o.order>=1) rec(0);
+    const dbm = pw>0 ? 10*Math.log10(pw) : -120;
+    return {dbm, paths};
+  }
+  function evalAll(plates,opt){
+    const segs=buildScene(plates); return RX.map(r=>trace(segs,r,opt).dbm);
+  }
+  function metrics(p0,p1,plates){
+    const N=p0.length; let s=0; for(let i=0;i<N;i++) s+=p1[i]-p0[i];
+    const low=a=>a.slice().sort((x,y)=>x-y).slice(0,6).reduce((x,y)=>x+y,0)/6;
+    let A=0; for(const p of (plates||[])){ const g=plateSeg(p); A+=0.24*(1+g.d*g.d); }
+    return {avg:s/N, low:low(p1)-low(p0), atotal:A, low0:low(p0), low1:low(p1)};
+  }
+  return {TX,RX,WALLS,GROUPS,NAMES,MEAS,SHELF,LAM,setPattern,patGain,buildScene,plateSeg,trace,evalAll,metrics};
+})();
+
+
+PMC.setPattern([-31.66, -31.1, -30.61, -30.45, -30.79, -30.65, -31.79, -32.56, -32.51, -33.97, -36.26, -37.15, -38.08, -41.62, -40.85, -39.26, -38.05, -37.72, -39.86, -41.81, -43.48, -42.55, -38.95, -35.74, -33.03, -31.71, -30.73, -29.95, -28.56, -28.16, -28.3, -29.74, -32.75, -34.98, -43.79, -44.57, -40.25, -36.95, -35.04, -33.7, -32.74, -32.89, -33.86, -33.84, -33.63, -31.34, -30.7, -30.9, -31.13, -31.29, -31.37, -31.89, -32.51, -35.54, -37.55, -37.09, -36.46, -36.61, -39.1, -42.79, -37.41, -32.01, -29.81, -29.0, -29.25, -30.85, -33.77, -36.4, -40.86, -40.36, -37.91, -36.89, -34.99, -33.46, -33.24, -34.28, -36.67, -42.36, -41.73, -38.26, -35.63, -34.2, -33.56, -32.95, -31.77, -31.06, -30.62, -30.72, -30.54, -30.63, -30.7, -31.08, -31.98, -33.62, -34.83, -35.03, -37.37, -37.21, -36.24, -34.32, -31.86, -30.58, -29.63, -29.34, -29.68, -31.92, -36.04, -42.61, -38.76, -30.77, -25.54, -24.4, -22.5, -20.81, -19.98, -19.34, -18.08, -17.09, -16.28, -15.95, -15.0, -14.72, -14.57, -14.48, -14.21, -13.98, -13.55, -13.32, -13.18, -12.88, -12.25, -11.73, -10.99, -10.62, -10.16, -10.08, -10.12, -10.29, -10.56, -10.79, -11.36, -12.31, -13.68, -16.24, -18.64, -22.29, -26.94, -27.5, -24.93, -20.75, -18.71, -17.13, -15.84, -15.18, -15.02, -14.76, -14.62, -14.65, -14.9, -15.28, -16.38, -17.43, -19.68, -22.08, -21.3, -16.64, -13.33, -10.6, -8.74, -6.97, -4.99, -4.11, -2.94, -2.21, -1.58, -0.98, -0.91, -0.42, -0.22, -0.06, 0, -0.02, -0.08, -0.22, -0.35, -0.71, -0.87, -1.49, -2.1, -3.12, -3.99, -5.34, -6.05, -8.58, -10.65, -13.94, -17.53, -22.21, -49.14, -30.02, -22.79, -18.18, -15.62, -14.97, -13.22, -12.44, -12.18, -12.24, -12.84, -13.85, -14.85, -15.76, -17.74, -19.44, -22.42, -30.16, -31.4, -23.26, -17.32, -14.69, -13.82, -12.51, -11.83, -11.7, -11.94, -12.3, -12.66, -13.01, -13.26, -13.87, -14.33, -15.45, -16.29, -18.12, -19.36, -20.15, -20.18, -19.79, -19.09, -18.74, -18.53, -18.91, -19.58, -20.69, -21.86, -23.52, -25.5, -26.93, -29.59, -30.42, -32.4, -34.47, -35.61, -35.86, -34.91, -33.98, -32.97, -31.51, -29.81, -28.97, -28.65, -28.83, -29.89, -33.4, -35.11, -39.18, -50.43, -45.91, -44.41, -39.24, -36.45, -33.94, -32.75, -31.33, -31.14, -30.89, -30.67, -30.45, -30.23, -29.94, -28.88, -28.3, -27.9, -28.22, -28.49, -28.41, -27.72, -27.37, -27.46, -27.66, -28.06, -28.32, -29.13, -29.9, -29.97, -30.58, -31.08, -32.6, -33.72, -35.6, -37.21, -38.55, -38.71, -38.33, -38.84, -38.46, -33.76, -32.02, -29.66, -29.19, -28.29, -29.32, -30.98, -32.91, -34.69, -34.65, -35.03, -33.89, -33.59, -33.1, -33.07, -33.84, -35.17, -37.52, -40.55, -43.28, -40.6, -39.04, -36.07, -33.9, -32.45, -32.34, -34.39, -39.7, -41.38, -43.49, -41.84, -40.62, -36.62, -34.25, -33.4, -33.13, -33.95, -35.98, -35.74, -35.96, -35.76, -36.25, -39.56, -39.43, -35.59, -33.73, -32.39, -32.08, -33.03, -33.32, -32.72, -31.54, -34.34, -31.82, -31.66]);
+</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const NS='http://www.w3.org/2000/svg';
+const el=(n,a,p)=>{const e=document.createElementNS(NS,n); for(const k in a) e.setAttribute(k,a[k]); if(p) p.appendChild(e); return e;};
+const X=x=>x*100, Y=y=>(6.31-y)*100;
+const G=PMC.GROUPS;
+const PRESETS=[
+  {name:'基準環境',beam:180,plates:[]},
+  {name:'ビームだけC壁へ',beam:222,plates:[]},
+  {name:'囲む案（C壁左）',beam:180,plates:[{wall:2,s:0.45},{wall:2,s:1.45},{wall:0,s:0.15},{wall:0,s:1.15},{wall:4,s:0.7},{wall:3,s:0.2}]},
+  {name:'修正案（C壁中央＋角）',beam:225,plates:[{wall:0,s:3.55},{wall:0,s:4.15},{wall:3,s:0},{wall:4,s:0},{wall:2,s:1.57},{wall:2,s:0.97}]},
+  {name:'D壁に斜め1枚',beam:180,plates:[{wall:4,s:1.1,tilt:20}]}
+];
+const state={beam:225,plates:JSON.parse(JSON.stringify(PRESETS[3].plates)),order:4,wallAdj:-6,heat:false,sel:null,preset:3};
+state.plates.forEach(p=>{p.tilt=p.tilt||0;p.len=p.len||0.6;});
+const cache={}; let res=null, timer=null, heatGen=0, heatImg=null, busyOpt=false;
+const meanMeas=PMC.MEAS.reduce((a,b)=>a+b,0)/24;
+
+function opts(ord,beam){return {order:ord,wallAdj:state.wallAdj,beam:beam==null?state.beam:beam};}
+function baseline(ord){const k=ord+'|'+state.wallAdj; if(!cache[k]){const p=PMC.evalAll([],opts(ord,180)); const off=meanMeas-p.reduce((a,b)=>a+b,0)/24; cache[k]={p,off};} return cache[k];}
+function compute(full){
+  const ord=full?state.order:Math.min(3,state.order);
+  const b=baseline(ord); const p1=PMC.evalAll(state.plates,opts(ord));
+  // 基準は実測値、対処後は「実測値＋モデルの変化量」
+  const d0=PMC.MEAS.slice(), d1=PMC.MEAS.map((v,i)=>v+(p1[i]-b.p[i]));
+  const m=PMC.metrics(d0,d1,state.plates);
+  const sorted=d1.map((v,i)=>[v,i]).sort((a,c)=>a[0]-c[0]).slice(0,6).map(a=>a[1]);
+  res={ord,full,p0:d0,p1:d1,off:b.off,m,low:new Set(sorted)};
+}
+function changed(){
+  compute(false); render();
+  clearTimeout(timer); heatGen++;
+  if(state.order>3||state.heat){ setStatus('計算中…'); timer=setTimeout(()=>{ if(state.order>3){compute(true); render();} setStatus(); if(state.heat) runHeat(); }, state.order>4?350:180); }
+  else setStatus();
+}
+let cmpT=null; function scheduleCmp(){ clearTimeout(cmpT); cmpT=setTimeout(()=>{ if(typeof drawCmp==='function') drawCmp(); },500); }
+function setStatus(t){ $('status').textContent = t || ('反射'+res.ord+'回まで計算済み'+(res.ord<state.order?'（仮の値）':'')); }
+
+// ---- 色 ----
+let ramp=[];
+function readRamp(){ const cs=getComputedStyle(document.documentElement); ramp=[0,1,2,3,4,5,6].map(i=>{const h=cs.getPropertyValue('--s'+i).trim(); return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}); }
+function seq(dbm){ let t=(dbm+75)/35; t=Math.max(0,Math.min(1,t))*6; const i=Math.min(5,Math.floor(t)), f=t-i; const a=ramp[i], b=ramp[i+1]; return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f]; }
+const rgb=c=>'rgb('+c.map(v=>Math.round(v)).join(',')+')';
+const fmt=(v,d)=>(v<0?'−':'')+Math.abs(v).toFixed(d==null?1:d);
+const sfmt=(v,d)=>(v>=0?'+':'−')+Math.abs(v).toFixed(d==null?1:d);
+
+// ---- 平面図 ----
+const plan=$('plan'); let gHeat,gRays,gPlates,gPts,gBeam;
+function buildPlan(){
+  plan.innerHTML='';
+  const defs=el('defs',{},plan); const cp=el('clipPath',{id:'roomclip'},defs);
+  const poly=PMC.WALLS.map(w=>X(w[0])+','+Y(w[1])).join(' ');
+  el('polygon',{points:poly},cp);
+  el('polygon',{points:poly,fill:'var(--surface)',stroke:'none'},plan);
+  gHeat=el('g',{'clip-path':'url(#roomclip)'},plan);
+  el('rect',{x:X(2.56),y:Y(6.31),width:45,height:360,fill:'var(--gyp)','fill-opacity':.35,stroke:'none'},plan);
+  PMC.WALLS.forEach((w,i)=>{
+    const metal=w[4]!=='g';
+    el('line',{x1:X(w[0]),y1:Y(w[1]),x2:X(w[2]),y2:Y(w[3]),stroke:metal?'var(--wall)':'var(--gyp)','stroke-width':metal?5:2.5,'stroke-linecap':'square'},plan);
+  });
+  G.forEach(w=>{ const nx=-(w[3]-w[1]), ny=(w[2]-w[0]); const l=Math.hypot(nx,ny); const ox=-nx/l*7, oy=ny/l*7;
+    el('line',{x1:X(w[0])+ox,y1:Y(w[1])+oy,x2:X(w[2])+ox,y2:Y(w[3])+oy,stroke:'var(--install)','stroke-width':3,'stroke-opacity':.8},plan);});
+  const lab=(t,x,y,a)=>{const e=el('text',{x,y,'font-size':17,fill:'var(--ink2)','text-anchor':a||'middle'},plan); e.textContent=t;};
+  lab('A壁（金属窓）',X(4.8),Y(6.31)-14); lab('B壁',X(7.04)+12,Y(3.4),'start'); lab('C壁',X(1.3),Y(0)+30); lab('金属扉',X(2.87),Y(0)+30); lab('D壁',X(0)-14,Y(2.2),'end'); lab('棚',X(2.785),Y(4.6));
+  lab('設備盤',X(0)-14,Y(4.68),'end');
+  for(let x=0;x<=7;x++){ el('line',{x1:X(x),x2:X(x),y1:Y(0)+42,y2:Y(0)+50,stroke:'var(--muted)','stroke-width':1.5},plan); const e=el('text',{x:X(x),y:Y(0)+66,'font-size':13,'text-anchor':'middle',fill:'var(--muted)','font-family':'var(--mono)'},plan); e.textContent=x; }
+  for(let y=0;y<=6;y++){ el('line',{x1:-66,x2:-58,y1:Y(y),y2:Y(y),stroke:'var(--muted)','stroke-width':1.5},plan); const e=el('text',{x:-70,y:Y(y)+4.5,'font-size':13,'text-anchor':'end',fill:'var(--muted)','font-family':'var(--mono)'},plan); e.textContent=y; }
+  { const e=el('text',{x:X(7)+14,y:Y(0)+66,'font-size':13,fill:'var(--muted)'},plan); e.textContent='x (m)'; const f=el('text',{x:-84,y:Y(6)-16,'font-size':13,fill:'var(--muted)'},plan); f.textContent='y (m)'; }
+  gRays=el('g',{},plan); gBeam=el('g',{},plan); gPts=el('g',{},plan); gPlates=el('g',{},plan);
+}
+function drawPlan(){
+  // ビーム
+  gBeam.innerHTML=''; const T=PMC.TX; let d='';
+  for(let a=-180;a<=180;a+=1){ const g=PMC.patGain(a); const r=Math.max(0,(g+30)/30)*1.05; const th=(state.beam+a)*Math.PI/180; d+=(a===-180?'M':'L')+(X(T.x+r*Math.cos(th))).toFixed(1)+','+(Y(T.y+r*Math.sin(th))).toFixed(1); }
+  el('path',{d:d+'Z',fill:'var(--tx)','fill-opacity':.18,stroke:'var(--tx)','stroke-width':1.5},gBeam);
+  const th=state.beam*Math.PI/180, hx=X(T.x+1.3*Math.cos(th)), hy=Y(T.y+1.3*Math.sin(th));
+  el('line',{x1:X(T.x),y1:Y(T.y),x2:hx,y2:hy,stroke:'var(--tx)','stroke-width':1.5,'stroke-dasharray':'5 4'},gBeam);
+  el('circle',{cx:X(T.x),cy:Y(T.y),r:8,fill:'var(--tx)',stroke:'var(--ring)','stroke-width':2},gBeam);
+  const h=el('circle',{cx:hx,cy:hy,r:11,fill:'var(--surface)',stroke:'var(--tx)','stroke-width':3,style:'cursor:grab',tabindex:-1},gBeam); h.dataset.role='beam';
+  el('circle',{cx:hx,cy:hy,r:22,fill:'transparent',style:'cursor:grab'},gBeam).dataset.role='beam';
+  const t=el('text',{x:X(T.x)+14,y:Y(T.y)+26,'font-size':16,fill:'var(--ink2)'},gBeam); t.textContent='Tx';
+  // 受信点
+  gPts.innerHTML='';
+  PMC.RX.forEach((r,i)=>{ const v=res.p1[i]; const low=res.low.has(i);
+    if(low) el('circle',{cx:X(r.x),cy:Y(r.y),r:14,fill:'none',stroke:'var(--ink)','stroke-width':2},gPts);
+    const c=el('circle',{cx:X(r.x),cy:Y(r.y),r:9,fill:rgb(seq(v)),stroke:state.sel===i?'var(--plate)':'var(--ring)','stroke-width':state.sel===i?3.5:2,style:'cursor:pointer'},gPts); c.dataset.pt=i;
+    const hit=el('circle',{cx:X(r.x),cy:Y(r.y),r:20,fill:'transparent',style:'cursor:pointer'},gPts); hit.dataset.pt=i;
+    const tx=el('text',{x:X(r.x)+13,y:Y(r.y)-9,'font-size':13,fill:'var(--ink2)','pointer-events':'none',stroke:'var(--surface)','stroke-width':3,'paint-order':'stroke'},gPts); tx.textContent=r.n;
+  });
+  // 板
+  gPlates.innerHTML='';
+  state.plates.forEach((p,i)=>{ const s=PMC.plateSeg(p);
+    el('line',{x1:X(s.x1),y1:Y(s.y1),x2:X(s.x2),y2:Y(s.y2),stroke:'var(--ring)','stroke-width':12,'stroke-linecap':'round'},gPlates);
+    el('line',{x1:X(s.x1),y1:Y(s.y1),x2:X(s.x2),y2:Y(s.y2),stroke:'var(--plate)','stroke-width':8,'stroke-linecap':'round'},gPlates);
+    const mx=(X(s.x1)+X(s.x2))/2, my=(Y(s.y1)+Y(s.y2))/2;
+    el('circle',{cx:mx,cy:my,r:11,fill:'var(--plate)',stroke:'var(--ring)','stroke-width':2},gPlates);
+    const t=el('text',{x:mx,y:my+4.5,'font-size':13,'text-anchor':'middle',fill:'#fff','font-weight':700,'pointer-events':'none'},gPlates); t.textContent=i+1;
+    const hit=el('line',{x1:X(s.x1),y1:Y(s.y1),x2:X(s.x2),y2:Y(s.y2),stroke:'transparent','stroke-width':34,'stroke-linecap':'round',style:'cursor:grab'},gPlates); hit.dataset.plate=i;
+  });
+  drawRays();
+}
+function segName(i){ return i<PMC.WALLS.length?PMC.NAMES[i]:'板'+(i-PMC.WALLS.length+1); }
+function drawRays(){
+  gRays.innerHTML=''; const ul=$('paths'); ul.innerHTML='';
+  if(state.sel==null){ $('pathTitle').textContent='経路'; $('pathHint').hidden=false; return; }
+  const segs=PMC.buildScene(state.plates); const r=PMC.RX[state.sel];
+  const o=opts(res.ord); o.keepPaths=true; const out=PMC.trace(segs,r,o);
+  const ps=out.paths.sort((a,b)=>b.db-a.db).slice(0,8); if(!ps.length){ $('pathTitle').textContent='P'+String(r.n).padStart(2,'0')+' に届く経路'; $('pathHint').hidden=false; $('pathHint').textContent='この点に届く経路は見つかりませんでした。'; return; }
+  $('pathHint').hidden=true; const top=ps[0].db;
+  $('pathTitle').textContent='P'+String(r.n).padStart(2,'0')+' に届く経路（強い順）';
+  ps.slice().reverse().forEach(p=>{ const rel=p.db-top; const op=Math.max(.15,1+rel/18);
+    el('polyline',{points:p.pts.map(q=>X(q[0]).toFixed(1)+','+Y(q[1]).toFixed(1)).join(' '),fill:'none',stroke:'var(--ray)','stroke-opacity':op,'stroke-width':rel>-3?2.5:1.5,'stroke-linejoin':'round'},gRays); });
+  ps.forEach(p=>{ const li=document.createElement('li'); const a=document.createElement('span'); a.textContent=p.seq.length?p.seq.map(segName).join(' → '):'直接（棚の端を回折）'; const b=document.createElement('span'); b.className='num'; b.textContent=p===ps[0]?'最強':fmt(p.db-top)+' dB'; li.append(a,b); ul.appendChild(li); });
+}
+
+// ---- 評価指標・グラフ・表 ----
+function drawScores(){
+  const m=res.m; $('mAvg').textContent=sfmt(m.avg,2); $('mLow').textContent=sfmt(m.low,2); $('mA').textContent=m.atotal.toFixed(3);
+  $('mLowSub').textContent='下位6点 '+fmt(m.low0)+' → '+fmt(m.low1)+' dBm';
+  const n=state.plates.length, prot=state.plates.filter(p=>p.tilt).length;
+  $('mASub').textContent=n?('板'+n+'枚'+(prot?'（うち斜め'+prot+'枚）':'')):'板なし';
+}
+function drawChart(){
+  const svg=$('chart'); svg.innerHTML=''; const L=46,R=8,T=22,B=30,W=640,H=250;
+  const all=res.p0.concat(res.p1); let lo=Math.floor((Math.min(...all)-1.5)/5)*5, hi=Math.ceil((Math.max(...all)+1.5)/5)*5; if(hi-lo<15) hi=lo+15;
+  const yy=v=>T+(hi-v)/(hi-lo)*(H-T-B), step=(W-L-R)/24, xx=i=>L+(i+.5)*step;
+  for(let v=lo;v<=hi;v+=5){ el('line',{x1:L,x2:W-R,y1:yy(v),y2:yy(v),stroke:'var(--line)','stroke-width':1},svg); const t=el('text',{x:L-6,y:yy(v)+4,'font-size':11,'text-anchor':'end',fill:'var(--muted)','font-family':'var(--mono)'},svg); t.textContent=fmt(v,0); }
+  const u=el('text',{x:4,y:10,'font-size':11,fill:'var(--muted)'},svg); u.textContent='dBm';
+  PMC.RX.forEach((r,i)=>{ const a=res.p0[i], b=res.p1[i];
+    if(state.sel===i) el('rect',{x:xx(i)-step/2,y:T,width:step,height:H-T-B,fill:'var(--plate)','fill-opacity':.12},svg);
+    el('line',{x1:xx(i),x2:xx(i),y1:yy(a),y2:yy(b),stroke:'var(--muted)','stroke-width':2},svg);
+    el('circle',{cx:xx(i),cy:yy(a),r:4,fill:'var(--base)',stroke:'var(--surface)','stroke-width':1.5},svg);
+    if(res.low.has(i)) el('circle',{cx:xx(i),cy:yy(b),r:8.5,fill:'none',stroke:'var(--ink)','stroke-width':1.5},svg);
+    el('circle',{cx:xx(i),cy:yy(b),r:5,fill:'var(--after)',stroke:'var(--surface)','stroke-width':1.5},svg);
+    const t=el('text',{x:xx(i),y:H-B+16,'font-size':10.5,'text-anchor':'middle',fill:'var(--ink2)','font-family':'var(--mono)'},svg); t.textContent=r.n;
+    const hit=el('rect',{x:xx(i)-step/2,y:T,width:step,height:H-T,fill:'transparent',style:'cursor:pointer'},svg); hit.dataset.pt=i;
+  });
+  const xl=el('text',{x:W-R,y:H-1,'font-size':11,'text-anchor':'end',fill:'var(--muted)'},svg); xl.textContent='受信点';
+  const tb=$('tbl'); let h='<tr><th>点</th><th>基準（実測）</th><th>対処後</th><th>改善</th></tr>';
+  PMC.RX.forEach((r,i)=>{ h+='<tr><td>P'+String(r.n).padStart(2,'0')+(res.low.has(i)?' ●':'')+'</td><td class="num">'+fmt(res.p0[i],2)+'</td><td class="num">'+fmt(res.p1[i])+'</td><td class="num">'+sfmt(res.p1[i]-res.p0[i])+'</td></tr>'; });
+  tb.innerHTML=h;
+}
+function tipText(i){ const r=PMC.RX[i]; return 'P'+String(r.n).padStart(2,'0')+'　基準 '+fmt(res.p0[i])+' → 対処後 '+fmt(res.p1[i])+' dBm（'+sfmt(res.p1[i]-res.p0[i])+' dB）'; }
+function showTip(tipEl,wrap,ev,i){ const b=wrap.getBoundingClientRect(); tipEl.textContent=tipText(i); tipEl.hidden=false; const w=tipEl.offsetWidth/2+4; let x=ev.clientX-b.left; x=Math.max(w,Math.min(b.width-w,x)); tipEl.style.left=x+'px'; tipEl.style.top=Math.max(34,ev.clientY-b.top)+'px'; }
+function drawFit(){
+  const b=baseline(state.order); let e=0; b.p.forEach((v,i)=>{const d=v+b.off-PMC.MEAS[i]; e+=d*d;});
+  $('fit').textContent='基準環境の実測24点との差：標準偏差 '+Math.sqrt(e/24).toFixed(1)+' dB（反射'+state.order+'回、一律のずれ '+sfmt(b.off)+' dB を補正後）';
+}
+
+// ---- 板リスト ----
+function foot(p){ return p.len*Math.cos(p.tilt*Math.PI/180); }
+function wlen(p){ const w=G[p.wall]; return Math.hypot(w[2]-w[0],w[3]-w[1]); }
+function clampS(p){ p.s=Math.round(Math.max(0,Math.min(wlen(p)-foot(p),p.s))*100)/100; }
+// 板の中心の部屋座標（原点は D壁とC壁の角）
+function centerOf(p){ const w=G[p.wall], c=p.s+foot(p)/2; return w[5]==='x' ? w[0]+Math.sign(w[2]-w[0])*c : w[1]+Math.sign(w[3]-w[1])*c; }
+function setCenter(p,v){ const w=G[p.wall]; const c = w[5]==='x' ? (v-w[0])*Math.sign(w[2]-w[0]) : (v-w[1])*Math.sign(w[3]-w[1]); p.s=c-foot(p)/2; clampS(p); }
+function rangeOf(p){ const s0=p.s; p.s=0; const a=centerOf(p); p.s=wlen(p)-foot(p); const b=centerOf(p); p.s=s0; return [Math.min(a,b),Math.max(a,b)]; }
+function syncPlateInputs(){ state.plates.forEach((p,i)=>{ const inp=$('pos'+i); if(!inp) return; const w=G[p.wall]; const r=rangeOf(p); inp.min=r[0].toFixed(2); inp.max=r[1].toFixed(2); if(document.activeElement!==inp) inp.value=centerOf(p).toFixed(2); $('wall'+i).value=p.wall; $('ax'+i).textContent=w[5]+' ='; const up=w[5]==='y'; $('dec'+i).textContent=up?'↓':'←'; $('inc'+i).textContent=up?'↑':'→'; $('rng'+i).textContent='動かせる範囲 '+r[0].toFixed(2)+'〜'+r[1].toFixed(2)+' m'; }); }
+function touched(){ state.preset=-1; markPreset(); syncPlateInputs(); changed(); }
+function drawPlates(){
+  const box=$('plates'); box.innerHTML='';
+  state.plates.forEach((p,i)=>{
+    const row=document.createElement('div'); row.className='plate';
+    const top=document.createElement('div'); top.className='prow';
+    const nm=document.createElement('b'); nm.className='badge'; nm.textContent=i+1;
+    const ws=document.createElement('select'); ws.id='wall'+i; ws.setAttribute('aria-label','板'+(i+1)+'を貼る壁'); G.forEach((w,k)=>{ const o=document.createElement('option'); o.value=k; o.textContent=w[4]; ws.appendChild(o); });
+    ws.addEventListener('change',()=>{ const c=centerOf(p); const old=G[p.wall][5]; p.wall=+ws.value; if(G[p.wall][5]===old) setCenter(p,c); else { p.s=(wlen(p)-foot(p))/2; clampS(p); } touched(); });
+    const ax=document.createElement('span'); ax.id='ax'+i; ax.className='num ax';
+    const dec=document.createElement('button'); dec.type='button'; dec.id='dec'+i; dec.className='nudge'; dec.setAttribute('aria-label','板'+(i+1)+'を5cm戻す');
+    const inp=document.createElement('input'); inp.type='number'; inp.step='0.01'; inp.id='pos'+i; inp.className='num pos'; inp.setAttribute('aria-label','板'+(i+1)+'の中心の座標（m）');
+    const inc=document.createElement('button'); inc.type='button'; inc.id='inc'+i; inc.className='nudge'; inc.setAttribute('aria-label','板'+(i+1)+'を5cm進める');
+    const m=document.createElement('span'); m.textContent='m'; m.className='unit';
+    const nudge=d=>{ setCenter(p,centerOf(p)+d); touched(); };
+    dec.addEventListener('click',ev=>nudge(ev.shiftKey?-0.01:-0.05)); inc.addEventListener('click',ev=>nudge(ev.shiftKey?0.01:0.05));
+    inp.addEventListener('input',()=>{ const v=parseFloat(inp.value); if(!isFinite(v)) return; setCenter(p,v); touched(); });
+    inp.addEventListener('blur',()=>{ inp.value=centerOf(p).toFixed(2); });
+    const del=document.createElement('button'); del.type='button'; del.textContent='削除'; del.className='del'; del.setAttribute('aria-label','板'+(i+1)+'を削除');
+    del.addEventListener('click',()=>{state.plates.splice(i,1); state.preset=-1; markPreset(); drawPlates(); changed();});
+    top.append(nm,ws,ax,dec,inp,inc,m,del);
+    const bot=document.createElement('div'); bot.className='prow sub';
+    const tlab=document.createElement('span'); tlab.textContent='傾き';
+    const sl=document.createElement('input'); sl.type='range'; sl.min=-45; sl.max=45; sl.step=1; sl.value=p.tilt; sl.id='tilt'+i; sl.setAttribute('aria-label','板'+(i+1)+'の傾き');
+    const tv=document.createElement('span'); tv.className='num tv'; tv.textContent=p.tilt+'°';
+    sl.addEventListener('input',()=>{ const c=centerOf(p); p.tilt=+sl.value; tv.textContent=p.tilt+'°'; setCenter(p,c); touched(); });
+    const sel=document.createElement('select'); sel.id='len'+i; sel.setAttribute('aria-label','板'+(i+1)+'の向き'); sel.innerHTML='<option value="0.6">横60cm</option><option value="0.4">横40cm</option>'; sel.value=String(p.len);
+    sel.addEventListener('change',()=>{ const c=centerOf(p); p.len=+sel.value; setCenter(p,c); touched(); });
+    const rg=document.createElement('span'); rg.id='rng'+i; rg.className='rng';
+    bot.append(tlab,sl,tv,sel,rg);
+    row.append(top,bot); box.appendChild(row);
+  });
+  syncPlateInputs();
+  $('addBtn').disabled=state.plates.length>=6;
+}
+function render(){ drawPlan(); drawScores(); drawChart(); scheduleCmp(); }
+
+// ---- ヒートマップ ----
+const ROOM=PMC.WALLS.map(w=>[w[0],w[1]]);
+function inside(x,y){ let c=false; for(let i=0,j=ROOM.length-1;i<ROOM.length;j=i++){ const a=ROOM[i],b=ROOM[j]; if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]) c=!c; } return c; }
+function runHeat(){
+  const gen=++heatGen; const st=0.16, nx=Math.ceil(7.04/st), ny=Math.ceil(6.31/st);
+  const cv=document.createElement('canvas'); cv.width=nx; cv.height=ny; const ctx=cv.getContext('2d'); const img=ctx.createImageData(nx,ny);
+  const segs=PMC.buildScene(state.plates); const o=opts(3); const off=baseline(3).off; let j=0;
+  if(!heatImg){ heatImg=el('image',{x:0,y:0,width:nx*st*100,height:ny*st*100,preserveAspectRatio:'none',opacity:.92},gHeat); }
+  heatImg.setAttribute('y',Y(ny*st)); heatImg.setAttribute('width',nx*st*100); heatImg.setAttribute('height',ny*st*100);
+  setStatus('部屋全体を計算中…');
+  function row(){ if(gen!==heatGen||!state.heat) return; const t0=performance.now();
+    while(j<ny&&performance.now()-t0<30){ const y=(ny-1-j+.5)*st;
+      for(let i=0;i<nx;i++){ const x=(i+.5)*st; const k=(j*nx+i)*4; if(!inside(x,y)){ img.data[k+3]=0; continue; }
+        const c=seq(PMC.trace(segs,{x,y},o).dbm+off); img.data[k]=c[0]; img.data[k+1]=c[1]; img.data[k+2]=c[2]; img.data[k+3]=255; }
+      j++; }
+    ctx.putImageData(img,0,0); heatImg.setAttribute('href',cv.toDataURL());
+    if(j<ny) setTimeout(row,0); else setStatus();
+  }
+  row();
+}
+
+// ---- 操作 ----
+function svgPt(ev){ const p=plan.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY; const q=p.matrixTransform(plan.getScreenCTM().inverse()); return {x:q.x/100,y:6.31-q.y/100}; }
+let drag=null;
+plan.addEventListener('pointerdown',ev=>{ const t=ev.target;
+  if(t.dataset.role==='beam'){ drag={k:'beam'}; }
+  else if(t.dataset.plate!=null){ const i=+t.dataset.plate, p=state.plates[i], s=PMC.plateSeg(p), q=svgPt(ev); const w=G[p.wall], wl=Math.hypot(w[2]-w[0],w[3]-w[1]); const ux=(w[2]-w[0])/wl, uy=(w[3]-w[1])/wl; drag={k:'plate',i,grab:((q.x-w[0])*ux+(q.y-w[1])*uy)-p.s,moved:false}; }
+  else return;
+  plan.setPointerCapture(ev.pointerId); ev.preventDefault(); });
+plan.addEventListener('pointermove',ev=>{
+  if(!drag){ const t=ev.target; if(t.dataset&&t.dataset.pt!=null) showTip($('tip'),$('planWrap'),ev,+t.dataset.pt); else $('tip').hidden=true; return; }
+  const q=svgPt(ev);
+  if(drag.k==='beam'){ let a=Math.atan2(q.y-PMC.TX.y,q.x-PMC.TX.x)*180/Math.PI; a=Math.round((a+360)%360)%360; if(a!==state.beam){ state.beam=a; syncBeam(); state.preset=-1; markPreset(); changed(); } }
+  else { const p=state.plates[drag.i]; let best=null;
+    for(let wi=0;wi<G.length;wi++){ const w=G[wi], wl=Math.hypot(w[2]-w[0],w[3]-w[1]); if(wl<p.len) continue; const ux=(w[2]-w[0])/wl, uy=(w[3]-w[1])/wl; const t=(q.x-w[0])*ux+(q.y-w[1])*uy; const tc=Math.max(0,Math.min(wl,t)); const d=Math.hypot(q.x-(w[0]+ux*tc),q.y-(w[1]+uy*tc)); const bias=wi===p.wall?-0.12:0; if(!best||d+bias<best.d) best={d:d+bias,wi,t,wl}; }
+    const same=best.wi===p.wall; const foot=p.len*Math.cos(p.tilt*Math.PI/180);
+    let s=(same?best.t-drag.grab:best.t-foot/2); s=Math.max(0,Math.min(best.wl-foot,s)); s=Math.round(s*100)/100;
+    if(!same) drag.grab=foot/2;
+    if(best.wi!==p.wall||s!==p.s){ p.wall=best.wi; p.s=s; drag.moved=true; state.preset=-1; markPreset(); syncPlateInputs(); changed(); } } });
+const endDrag=ev=>{ if(!drag) return; drag=null; };
+plan.addEventListener('pointerup',endDrag); plan.addEventListener('pointercancel',endDrag);
+plan.addEventListener('pointerleave',()=>{ if(!drag) $('tip').hidden=true; });
+plan.addEventListener('click',ev=>{ const t=ev.target; if(t.dataset&&t.dataset.pt!=null){ const i=+t.dataset.pt; state.sel=state.sel===i?null:i; render(); } });
+const chart=$('chart');
+chart.addEventListener('pointermove',ev=>{ const t=ev.target; if(t.dataset&&t.dataset.pt!=null) showTip($('tip2'),$('chartWrap'),ev,+t.dataset.pt); else $('tip2').hidden=true; });
+chart.addEventListener('pointerleave',()=>{ $('tip2').hidden=true; });
+chart.addEventListener('click',ev=>{ const t=ev.target; if(t.dataset&&t.dataset.pt!=null){ const i=+t.dataset.pt; state.sel=state.sel===i?null:i; render(); } });
+
+function syncBeam(){ $('beam').value=state.beam; $('beamVal').textContent=state.beam+'°'; }
+$('beam').addEventListener('input',e=>{ state.beam=+e.target.value; $('beamVal').textContent=state.beam+'°'; state.preset=-1; markPreset(); changed(); });
+$('order').addEventListener('change',e=>{ state.order=+e.target.value; drawFit(); changed(); });
+$('wadj').addEventListener('input',e=>{ state.wallAdj=-(+e.target.value); $('wadjVal').textContent='+'+e.target.value+' dB'; drawFit(); changed(); });
+$('heatBtn').addEventListener('click',()=>{ state.heat=!state.heat; const b=$('heatBtn'); b.classList.toggle('on',state.heat); b.setAttribute('aria-pressed',state.heat); if(state.heat) runHeat(); else { heatGen++; if(heatImg){ heatImg.remove(); heatImg=null; } setStatus(); } });
+$('addBtn').addEventListener('click',()=>{ if(state.plates.length>=6) return; const used=state.plates.filter(p=>p.wall===4).length; state.plates.push({wall:4,s:Math.min(3,0.9+used*0.65),tilt:0,len:0.6}); state.preset=-1; markPreset(); drawPlates(); changed(); });
+function markPreset(){ [...$('presets').children].forEach((b,i)=>b.classList.toggle('on',i===state.preset)); }
+PRESETS.forEach((p,i)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=p.name; b.addEventListener('click',()=>{ state.beam=p.beam; state.plates=JSON.parse(JSON.stringify(p.plates)); state.plates.forEach(q=>{q.tilt=q.tilt||0;q.len=q.len||0.6;}); state.preset=i; syncBeam(); markPreset(); drawPlates(); changed(); }); $('presets').appendChild(b); });
+$('optBtn').addEventListener('click',()=>{ if(busyOpt) return; busyOpt=true; const btn=$('optBtn'); btn.disabled=true;
+  const b=baseline(3); const cand=[]; for(let a=0;a<360;a+=3) cand.push(a); let best=null, k=0, phase=0;
+  const score=a=>{ const p1=PMC.evalAll(state.plates,opts(3,a)); const m=PMC.metrics(PMC.MEAS,PMC.MEAS.map((v,i)=>v+(p1[i]-b.p[i])),state.plates); return m.avg+m.low; };
+  function stepf(){ const t0=performance.now(); while(k<cand.length&&performance.now()-t0<40){ const a=cand[k++]; const s=score(a); if(!best||s>best.s) best={a,s}; }
+    setStatus('ビーム方向を探索中… '+Math.round(100*(phase*.9+(k/cand.length)*(phase?0.1:0.9)))+'%');
+    if(k<cand.length){ setTimeout(stepf,0); return; }
+    if(phase===0){ phase=1; cand.length=0; for(let d=-2;d<=2;d++) if(d) cand.push((best.a+d+360)%360); k=0; setTimeout(stepf,0); return; }
+    state.beam=best.a; syncBeam(); state.preset=-1; markPreset(); busyOpt=false; btn.disabled=false; changed(); }
+  stepf(); });
+const mq=window.matchMedia('(prefers-color-scheme: dark)'); const retheme=()=>{ readRamp(); render(); if(state.heat) runHeat(); };
+mq.addEventListener&&mq.addEventListener('change',retheme);
+new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+// ---- リンク（配置をURLの # 以降に入れる。英数字と . _ - だけ使う） ----
+function encodeState(st){
+  let s='b'+st.beam;
+  for(const p of st.plates){ const tl=p.tilt<0?'m'+(-p.tilt):String(p.tilt); s+='_p'+p.wall+'-'+p.s.toFixed(2)+'-'+tl+'-'+Math.round(p.len*100); }
+  return s;
+}
+function decodeState(h){
+  h=(h||'').replace(/^#/,''); if(!/^b\d{1,3}(_p\d-\d+(\.\d+)?-m?\d{1,2}-\d{2})*$/.test(h)) return null;
+  const parts=h.split('_'); const beam=((+parts[0].slice(1))%360+360)%360; const plates=[];
+  for(const q of parts.slice(1,7)){ const a=q.slice(1).split('-'); const wall=+a[0]; if(!(wall>=0&&wall<G.length)) return null;
+    let tilt=a[2][0]==='m'?-(+a[2].slice(1)):+a[2]; tilt=Math.max(-45,Math.min(45,tilt)); const len=a[3]==='40'?0.4:0.6;
+    const p={wall,s:+a[1],tilt,len}; clampS(p); plates.push(p); }
+  return {beam,plates};
+}
+function linkFor(st){ return location.href.split('#')[0]+'#'+encodeState(st); }
+function applyPlan(st,presetIdx){ state.beam=st.beam; state.plates=JSON.parse(JSON.stringify(st.plates)); state.plates.forEach(q=>{q.tilt=q.tilt||0;q.len=q.len||0.6;}); state.preset=presetIdx==null?-1:presetIdx; syncBeam(); markPreset(); drawPlates(); changed(); }
+function say(t){ $('msg').textContent=t; clearTimeout(say.t); say.t=setTimeout(()=>{$('msg').textContent='';},4000); }
+function copyLink(st){
+  const url=linkFor(st); const inp=$('linkOut'); inp.value=url; $('linkRow').hidden=false;
+  const fallback=()=>{ inp.focus(); inp.select(); say('リンクを選択しました。コピーして送ってください。'); };
+  try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(()=>say('リンクをコピーしました。'),fallback); else fallback(); }catch(e){ fallback(); }
+}
+$('linkBtn').addEventListener('click',()=>copyLink(state));
+window.addEventListener('hashchange',()=>{ const st=decodeState(location.hash); if(st){ applyPlan(st); say('リンクの配置を読み込みました。'); } });
+
+// ---- 保存した案 ----
+const KEY='pmc7-plans-v1'; let plans=[];
+try{ const raw=localStorage.getItem(KEY); if(raw){ const a=JSON.parse(raw); if(Array.isArray(a)) plans=a.filter(x=>x&&typeof x.beam==='number'&&Array.isArray(x.plates)); } }catch(e){}
+function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(plans)); }catch(e){ say('このブラウザでは保存できませんでした。リンクで残してください。'); } }
+const evalCache={};
+function planMetrics(st){
+  const k=state.order+'|'+state.wallAdj+'|'+encodeState(st); if(evalCache[k]) return evalCache[k];
+  const b=baseline(state.order); const p1=PMC.evalAll(st.plates,opts(state.order,st.beam));
+  const m=PMC.metrics(PMC.MEAS,PMC.MEAS.map((v,i)=>v+(p1[i]-b.p[i])),st.plates); return evalCache[k]=m;
+}
+let cmpGen=0;
+function drawCmp(){
+  const gen=++cmpGen; const tb=$('cmp');
+  const rows=[{name:'いまの配置',beam:state.beam,plates:state.plates,cur:true}].concat(plans);
+  let h='<tr><th>案</th><th>ビーム</th><th>板</th><th>ΔP_avg (dB)</th><th>ΔP_low (dB)</th><th>A_total (m²)</th><th></th></tr>';
+  rows.forEach((r,i)=>{ h+='<tr'+(r.cur?' class="cur"':'')+' data-i="'+(i-1)+'"><td class="nm"></td><td class="num">'+r.beam+'°</td><td class="num">'+r.plates.length+'</td><td class="num c-avg">…</td><td class="num c-low">…</td><td class="num c-a">…</td><td class="act">'+(r.cur?'':'<div><button type="button" data-a="load">開く</button><button type="button" data-a="link">リンク</button><button type="button" data-a="del">削除</button></div>')+'</td></tr>'; });
+  tb.innerHTML=h; [...tb.querySelectorAll('tr[data-i]')].forEach((tr,i)=>{ tr.querySelector('.nm').textContent=rows[i].name; });
+  const old=tb.parentElement.querySelector('.empty'); if(old) old.remove();
+  if(!plans.length){ const p=document.createElement('p'); p.className='empty'; p.textContent='まだ保存した案はありません。名前を付けて「いまの配置を保存」を押すと、ここに並びます。'; tb.parentElement.appendChild(p); }
+  const ms=[]; let i=0;
+  (function next(){ if(gen!==cmpGen) return; if(i<rows.length){ const r=rows[i]; const m=r.cur?res.m:planMetrics(r); ms.push(m); const tr=tb.querySelectorAll('tr[data-i]')[i];
+      tr.querySelector('.c-avg').textContent=sfmt(m.avg,2); tr.querySelector('.c-low').textContent=sfmt(m.low,2); tr.querySelector('.c-a').textContent=m.atotal.toFixed(3); i++; setTimeout(next,0); return; }
+    if(rows.length>1){ const trs=tb.querySelectorAll('tr[data-i]'); const best=(f,dir)=>{ let bi=0; ms.forEach((m,j)=>{ if(dir*(f(m)-f(ms[bi]))>1e-9) bi=j; }); return bi; };
+      trs[best(m=>m.avg,1)].querySelector('.c-avg').classList.add('best'); trs[best(m=>m.low,1)].querySelector('.c-low').classList.add('best'); trs[best(m=>m.atotal,-1)].querySelector('.c-a').classList.add('best'); }
+  })();
+}
+$('cmp').addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return; const i=+b.closest('tr').dataset.i; const p=plans[i]; if(!p) return;
+  if(b.dataset.a==='load'){ applyPlan(p); say('「'+p.name+'」を開きました。'); window.scrollTo({top:0,behavior:'smooth'}); }
+  else if(b.dataset.a==='link'){ copyLink(p); }
+  else if(b.dataset.a==='del'){ plans.splice(i,1); persist(); drawCmp(); say('「'+p.name+'」を削除しました。'); } });
+$('saveBtn').addEventListener('click',()=>{ if(plans.length>=30){ say('保存できるのは30件までです。不要な案を削除してください。'); return; }
+  const name=$('planName').value.trim()||('案'+(plans.length+1));
+  plans.push({name,beam:state.beam,plates:JSON.parse(JSON.stringify(state.plates)),t:Date.now()}); persist(); $('planName').value=''; drawCmp(); say('「'+name+'」を保存しました。'); });
+$('planName').addEventListener('keydown',ev=>{ if(ev.key==='Enter') $('saveBtn').click(); });
+
+readRamp(); buildPlan();
+{ const st=decodeState(location.hash); if(st){ state.beam=st.beam; state.plates=st.plates; state.preset=-1; } }
+syncBeam(); markPreset(); drawPlates(); drawFit(); changed();
+})();
+</script>
+
+</body>
+</html>
