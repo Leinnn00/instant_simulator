@@ -77,6 +77,8 @@ input[type=range]{flex:1 1 120px;min-width:90px;accent-color:var(--after)}
 .plate .del{margin-left:auto}
 .plate .tv{min-width:3.5ch;text-align:right;color:var(--ink2)}
 .plate .rng{flex:1 1 100%;font-family:var(--mono);font-size:11.5px}
+.plate .warn{flex:1 1 100%;font-size:12px;color:#d03b3b}
+.plate .offv{min-width:5ch;text-align:right;color:var(--ink2)}
 .prow.sub input[type=range]{flex:1 1 90px;min-width:70px}
 .hint{font-size:12px;color:var(--muted);margin:4px 0 0}
 details{font-size:13px}
@@ -144,13 +146,13 @@ svg text{font-family:var(--font)}
         </div>
         <div class="legend">
           <span><i class="rampbar"></i><span class="num">−75</span>〜<span class="num">−40 dBm</span></span>
-          <span><i class="sw" style="background:var(--tx);height:2px"></i>ビーム（太線が中心、細線が半値幅±7.5°の範囲）</span>
+          <span><i class="sw" style="background:var(--tx);height:2px"></i>ビームの中心（板では少し、壁では大きく薄くなる）</span>
           <span><i class="sw" style="background:var(--plate)"></i>反射板</span>
           <span><i class="sw" style="background:var(--install)"></i>設置できる壁</span>
           <span><i class="sw" style="background:var(--wall);height:5px"></i>金属</span>
           <span><i class="dot" style="border:2px solid var(--ink);width:11px;height:11px"></i>下位6点（対処後）</span>
         </div>
-        <p class="hint">板はドラッグで移動、送信機の先の丸をドラッグでビーム方向。受信点をクリックすると、その点に届く経路を表示します。紫の太線はビームの中心、細線は半値幅（±7.5°）の範囲で、鏡のように反射させてたどったものです。棚の端での回り込み（回折）は描いていません。</p>
+        <p class="hint">板はドラッグで移動、送信機の先の丸をドラッグでビーム方向。受信点をクリックすると、その点に届く経路を表示します。紫の線はビームの中心を鏡のように反射させてたどったものです（実際のビームは幅15°あります）。棚の端での回り込み（回折）は描いていません。</p>
       </div>
 
       <div class="panel">
@@ -190,7 +192,7 @@ svg text{font-family:var(--font)}
         <h2>反射板（60 × 40 cm、最大6枚）</h2>
         <div class="plates" id="plates"></div>
         <button id="addBtn" type="button">板を追加</button>
-        <p class="hint">座標は板の中心の位置で、原点は D壁と C壁の角（図の左下）です。C壁・A壁は x、D壁は y で動きます。矢印は5 cmずつ、Shift を押しながらで1 cmずつ。傾きは壁からの角度で、0° が壁にぴったりです。</p>
+        <p class="hint">座標は板の中心の位置で、原点は D壁と C壁の角（図の左下）です。C壁・A壁は x、D壁は y で動きます。矢印は5 cmずつ、Shift を押しながらで1 cmずつ。傾きは壁からの角度で、0° が壁にぴったりです。「壁から」で板を壁から離せます（三脚などでの自立設置。Tx から1 m以内と受信エリアの中には置けません）。離すほど A_total が増えます。</p>
       </div>
 
       <div class="panel" id="pathPanel">
@@ -289,13 +291,13 @@ const PMC = (function(){
     const w=GROUPS[p.wall]; const L=p.len||0.6;
     const wx=w[2]-w[0], wy=w[3]-w[1], wl=Math.hypot(wx,wy), ux=wx/wl, uy=wy/wl;
     const nx=-uy, ny=ux; // 部屋内側の法線（頂点は反時計回り）
-    const off=0.008; const th=(p.tilt||0)*Math.PI/180;
+    const off=0.008+Math.max(0,Math.min(1.5,p.off||0)); const th=(p.tilt||0)*Math.PI/180;
     const s0=Math.max(0,Math.min(wl-L*Math.cos(th),p.s));
     let ax,ay,bx,by;
     const c=Math.cos(th), sn=Math.sin(Math.abs(th));
     if(th>=0){ ax=w[0]+ux*s0; ay=w[1]+uy*s0; bx=ax+ux*L*c+nx*L*sn; by=ay+uy*L*c+ny*L*sn; }
     else { bx=w[0]+ux*(s0+L*c); by=w[1]+uy*(s0+L*c); ax=bx-ux*L*c+nx*L*sn; ay=by-uy*L*c+ny*L*sn; }
-    return {x1:ax+nx*off,y1:ay+ny*off,x2:bx+nx*off,y2:by+ny*off,mat:'m',occ:true,plate:true,d:L*sn,L};
+    return {x1:ax+nx*off,y1:ay+ny*off,x2:bx+nx*off,y2:by+ny*off,mat:'m',occ:true,plate:true,d:(off-0.008)+L*sn,L};
   }
   function buildScene(plates){
     const segs = WALLS.map(w=>({x1:w[0],y1:w[1],x2:w[2],y2:w[3],mat:w[4]==='s'?'m':w[4],occ:w[4]!=='s'}));
@@ -398,7 +400,7 @@ const PMC = (function(){
           const qx=s.x1-ox, qy=s.y1-oy; const t=(qx*s.dy-qy*s.dx)/den, u=(qx*dy-qy*dx)/den;
           if(t>1e-6&&u>=0&&u<=1&&(!best||t<best.t)) best={t,i}; }
         if(!best) break;
-        const hx=ox+dx*best.t, hy=oy+dy*best.t; legs.push({x1:ox,y1:oy,x2:hx,y2:hy,db,k,a:Math.round(a*100)/100}); len+=best.t;
+        const hx=ox+dx*best.t, hy=oy+dy*best.t; legs.push({x1:ox,y1:oy,x2:hx,y2:hy,db,k,a:Math.round(a*100)/100,hit:segs[best.i].plate?'plate':'wall'}); len+=best.t;
         const s=segs[best.i]; const dn=dx*s.nx+dy*s.ny;
         if(s.mat==='m') db-=0; else db+=Math.min(-0.5,10*Math.log10(gypsumR2(Math.abs(dn),o.er,o.ei))-o.wallAdj);
         dx-=2*dn*s.nx; dy-=2*dn*s.ny; ox=hx; oy=hy;
@@ -497,12 +499,13 @@ function drawPlan(){
   // ビーム
   gBeam.innerHTML=''; const T=PMC.TX;
   if(state.showBeam){
-    const legs=PMC.beamRays(state.plates,{beam:state.beam,wallAdj:state.wallAdj,span:13,step:1});
-    // 半値幅（±7.5°）の内側を主に描き、外側はごく薄く。中心の1本は太線で強調
-    const line=(l,op,w)=>el('line',{x1:X(l.x1).toFixed(1),y1:Y(l.y1).toFixed(1),x2:X(l.x2).toFixed(1),y2:Y(l.y2).toFixed(1),stroke:'var(--tx)','stroke-opacity':op.toFixed(2),'stroke-width':w,'stroke-linecap':'round'},gBeam);
-    legs.sort((a,b)=>a.db-b.db).forEach(l=>{ if(l.a===0) return; const inside=Math.abs(l.a)<=7.5;
-      let op=Math.min(.6,.6*(1+l.db/18)); if(!inside) op*=0.18; if(op<.03) return; line(l,op,inside?1.2:1); });
-    legs.filter(l=>l.a===0).forEach(l=>{ const op=Math.max(.35,Math.min(1,1+l.db/24)); line(l,op,3); });
+    // ビームの中心の1本だけを、反射をたどって描く
+    const legs=PMC.beamRays(state.plates,{beam:state.beam,wallAdj:state.wallAdj,span:0,step:1});
+    // 見た目の濃さ: 反射板で跳ね返ると少しだけ、壁・扉・棚では大きく薄くなる
+    let op=1;
+    for(const l of legs){ if(op<.08) break;
+      el('line',{x1:X(l.x1).toFixed(1),y1:Y(l.y1).toFixed(1),x2:X(l.x2).toFixed(1),y2:Y(l.y2).toFixed(1),stroke:'var(--tx)','stroke-opacity':op.toFixed(2),'stroke-width':3,'stroke-linecap':'round'},gBeam);
+      op*= l.hit==='plate' ? 0.9 : 0.4; }
   }
   const th=state.beam*Math.PI/180, hx=X(T.x+1.3*Math.cos(th)), hy=Y(T.y+1.3*Math.sin(th));
   el('line',{x1:X(T.x),y1:Y(T.y),x2:hx,y2:hy,stroke:'var(--tx)','stroke-width':1.5,'stroke-dasharray':'5 4'},gBeam);
@@ -586,7 +589,14 @@ function clampS(p){ p.s=Math.round(Math.max(0,Math.min(wlen(p)-foot(p),p.s))*100
 function centerOf(p){ const w=G[p.wall], c=p.s+foot(p)/2; return w[5]==='x' ? w[0]+Math.sign(w[2]-w[0])*c : w[1]+Math.sign(w[3]-w[1])*c; }
 function setCenter(p,v){ const w=G[p.wall]; const c = w[5]==='x' ? (v-w[0])*Math.sign(w[2]-w[0]) : (v-w[1])*Math.sign(w[3]-w[1]); p.s=c-foot(p)/2; clampS(p); }
 function rangeOf(p){ const s0=p.s; p.s=0; const a=centerOf(p); p.s=wlen(p)-foot(p); const b=centerOf(p); p.s=s0; return [Math.min(a,b),Math.max(a,b)]; }
-function syncPlateInputs(){ state.plates.forEach((p,i)=>{ const inp=$('pos'+i); if(!inp) return; const w=G[p.wall]; const r=rangeOf(p); inp.min=r[0].toFixed(2); inp.max=r[1].toFixed(2); if(document.activeElement!==inp) inp.value=centerOf(p).toFixed(2); $('wall'+i).value=p.wall; $('ax'+i).textContent=w[5]+' ='; const up=w[5]==='y'; $('dec'+i).textContent=up?'↓':'←'; $('inc'+i).textContent=up?'↑':'→'; $('rng'+i).textContent='動かせる範囲 '+r[0].toFixed(2)+'〜'+r[1].toFixed(2)+' m'; }); }
+function syncPlateInputs(){ state.plates.forEach((p,i)=>{ const inp=$('pos'+i); if(!inp) return; const w=G[p.wall]; const r=rangeOf(p); inp.min=r[0].toFixed(2); inp.max=r[1].toFixed(2); if(document.activeElement!==inp) inp.value=centerOf(p).toFixed(2); $('wall'+i).value=p.wall; $('ax'+i).textContent=w[5]+' ='; const up=w[5]==='y'; $('dec'+i).textContent=up?'↓':'←'; $('inc'+i).textContent=up?'↑':'→'; $('rng'+i).textContent='動かせる範囲 '+r[0].toFixed(2)+'〜'+r[1].toFixed(2)+' m'; $('warn'+i).textContent=plateWarn(p); $('warn'+i).hidden=!$('warn'+i).textContent; }); }
+// 自立設置（壁から離した板）の禁止エリア: Tx から水平1 m以内と受信エリア
+const RXAREA={x1:0.40,x2:2.27,y1:2.86,y2:5.58};
+function segPtDist(s,px,py){ const dx=s.x2-s.x1, dy=s.y2-s.y1; let t=((px-s.x1)*dx+(py-s.y1)*dy)/(dx*dx+dy*dy); t=Math.max(0,Math.min(1,t)); return Math.hypot(s.x1+dx*t-px,s.y1+dy*t-py); }
+function segInRect(s,r){ for(let k=0;k<=20;k++){ const x=s.x1+(s.x2-s.x1)*k/20, y=s.y1+(s.y2-s.y1)*k/20; if(x>r.x1&&x<r.x2&&y>r.y1&&y<r.y2) return true; } return false; }
+function plateWarn(p){ if(!(p.off>0)) return ''; const s=PMC.plateSeg(p); const w=[];
+  if(segPtDist(s,PMC.TX.x,PMC.TX.y)<1) w.push('Tx から1 m以内'); if(segInRect(s,RXAREA)) w.push('受信エリアの中');
+  return w.length?('注意：'+w.join('・')+'には自立設置できません'):''; }
 function touched(){ state.preset=-1; markPreset(); syncPlateInputs(); changed(); }
 function drawPlates(){
   const box=$('plates'); box.innerHTML='';
@@ -616,7 +626,12 @@ function drawPlates(){
     const sel=document.createElement('select'); sel.id='len'+i; sel.setAttribute('aria-label','板'+(i+1)+'の向き'); sel.innerHTML='<option value="0.6">横60cm</option><option value="0.4">横40cm</option>'; sel.value=String(p.len);
     sel.addEventListener('change',()=>{ const c=centerOf(p); p.len=+sel.value; setCenter(p,c); touched(); });
     const rg=document.createElement('span'); rg.id='rng'+i; rg.className='rng';
-    bot.append(tlab,sl,tv,sel,rg);
+    const olab=document.createElement('span'); olab.textContent='壁から';
+    const os=document.createElement('input'); os.type='range'; os.min=0; os.max=100; os.step=1; os.value=Math.round((p.off||0)*100); os.id='off'+i; os.setAttribute('aria-label','板'+(i+1)+'の壁からの距離（cm）');
+    const ov=document.createElement('span'); ov.className='num offv'; ov.textContent=Math.round((p.off||0)*100)+' cm';
+    os.addEventListener('input',()=>{ p.off=(+os.value)/100; ov.textContent=os.value+' cm'; touched(); });
+    const wn=document.createElement('span'); wn.id='warn'+i; wn.className='warn'; wn.hidden=true;
+    bot.append(tlab,sl,tv,olab,os,ov,sel,rg,wn);
     row.append(top,bot); box.appendChild(row);
   });
   syncPlateInputs();
@@ -697,15 +712,15 @@ new MutationObserver(retheme).observe(document.documentElement,{attributes:true,
 // ---- リンク（配置をURLの # 以降に入れる。英数字と . _ - だけ使う） ----
 function encodeState(st){
   let s='b'+st.beam;
-  for(const p of st.plates){ const tl=p.tilt<0?'m'+(-p.tilt):String(p.tilt); s+='_p'+p.wall+'-'+p.s.toFixed(2)+'-'+tl+'-'+Math.round(p.len*100); }
+  for(const p of st.plates){ const tl=p.tilt<0?'m'+(-p.tilt):String(p.tilt); s+='_p'+p.wall+'-'+p.s.toFixed(2)+'-'+tl+'-'+Math.round(p.len*100)+(p.off>0?'-'+Math.round(p.off*100):''); }
   return s;
 }
 function decodeState(h){
-  h=(h||'').replace(/^#/,''); if(!/^b\d{1,3}(_p\d-\d+(\.\d+)?-m?\d{1,2}-\d{2})*$/.test(h)) return null;
+  h=(h||'').replace(/^#/,''); if(!/^b\d{1,3}(_p\d-\d+(\.\d+)?-m?\d{1,2}-\d{2}(-\d{1,3})?)*$/.test(h)) return null;
   const parts=h.split('_'); const beam=((+parts[0].slice(1))%360+360)%360; const plates=[];
   for(const q of parts.slice(1,7)){ const a=q.slice(1).split('-'); const wall=+a[0]; if(!(wall>=0&&wall<G.length)) return null;
     let tilt=a[2][0]==='m'?-(+a[2].slice(1)):+a[2]; tilt=Math.max(-45,Math.min(45,tilt)); const len=a[3]==='40'?0.4:0.6;
-    const p={wall,s:+a[1],tilt,len}; clampS(p); plates.push(p); }
+    const p={wall,s:+a[1],tilt,len,off:a[4]?Math.min(100,+a[4])/100:0}; clampS(p); plates.push(p); }
   return {beam,plates};
 }
 function linkFor(st){ return location.href.split('#')[0]+'#'+encodeState(st); }
