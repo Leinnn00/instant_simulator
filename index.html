@@ -135,6 +135,7 @@ svg text{font-family:var(--font)}
       <div class="panel">
         <div class="planbar">
           <h2 style="margin:0;flex:1 1 auto">評価部屋（上がA壁）</h2>
+          <button id="beamBtn" type="button" aria-pressed="true" class="on">ビームと反射を描く</button>
           <button id="heatBtn" type="button" aria-pressed="false">部屋全体の強さを塗る</button>
         </div>
         <div class="rel" id="planWrap">
@@ -143,12 +144,13 @@ svg text{font-family:var(--font)}
         </div>
         <div class="legend">
           <span><i class="rampbar"></i><span class="num">−75</span>〜<span class="num">−40 dBm</span></span>
+          <span><i class="sw" style="background:var(--tx);height:2px"></i>ビーム（中心±13°、濃いほど強い）</span>
           <span><i class="sw" style="background:var(--plate)"></i>反射板</span>
           <span><i class="sw" style="background:var(--install)"></i>設置できる壁</span>
           <span><i class="sw" style="background:var(--wall);height:5px"></i>金属</span>
           <span><i class="dot" style="border:2px solid var(--ink);width:11px;height:11px"></i>下位6点（対処後）</span>
         </div>
-        <p class="hint">板はドラッグで移動、送信機の先の丸をドラッグでビーム方向。受信点をクリックすると、その点に届く経路を表示します。</p>
+        <p class="hint">板はドラッグで移動、送信機の先の丸をドラッグでビーム方向。受信点をクリックすると、その点に届く経路を表示します。紫の線はビームを鏡のように反射させてたどったもので、棚の端での回り込み（回折）は描いていません。</p>
       </div>
 
       <div class="panel">
@@ -383,6 +385,28 @@ const PMC = (function(){
     const dbm = pw>0 ? 10*Math.log10(pw) : -120;
     return {dbm, paths};
   }
+  // ビームの可視化用: 送信点から光線を扇状に出し、鏡面反射でたどる（回折は描かない）
+  function beamRays(plates,opt){
+    const o=Object.assign({beam:180,span:15,step:0.75,bounces:4,maxLen:20,er:2.73,ei:0.126,wallAdj:0},opt||{});
+    const segs=buildScene(plates); const legs=[];
+    for(let a=-o.span;a<=o.span+1e-9;a+=o.step){
+      let db=patGain(a); let ox=TX.x, oy=TX.y; const th=(o.beam+a)*Math.PI/180; let dx=Math.cos(th), dy=Math.sin(th); let len=0;
+      for(let k=0;k<=o.bounces;k++){
+        let best=null;
+        for(let i=0;i<segs.length;i++){ const s=segs[i];
+          const den=dx*s.dy-dy*s.dx; if(Math.abs(den)<1e-12) continue;
+          const qx=s.x1-ox, qy=s.y1-oy; const t=(qx*s.dy-qy*s.dx)/den, u=(qx*dy-qy*dx)/den;
+          if(t>1e-6&&u>=0&&u<=1&&(!best||t<best.t)) best={t,i}; }
+        if(!best) break;
+        const hx=ox+dx*best.t, hy=oy+dy*best.t; legs.push({x1:ox,y1:oy,x2:hx,y2:hy,db,k}); len+=best.t;
+        const s=segs[best.i]; const dn=dx*s.nx+dy*s.ny;
+        if(s.mat==='m') db-=0; else db+=Math.min(-0.5,10*Math.log10(gypsumR2(Math.abs(dn),o.er,o.ei))-o.wallAdj);
+        dx-=2*dn*s.nx; dy-=2*dn*s.ny; ox=hx; oy=hy;
+        if(len>o.maxLen||db<-30) break;
+      }
+    }
+    return legs;
+  }
   function evalAll(plates,opt){
     const segs=buildScene(plates); return RX.map(r=>trace(segs,r,opt).dbm);
   }
@@ -392,7 +416,7 @@ const PMC = (function(){
     let A=0; for(const p of (plates||[])){ const g=plateSeg(p); A+=0.24*(1+g.d*g.d); }
     return {avg:s/N, low:low(p1)-low(p0), atotal:A, low0:low(p0), low1:low(p1)};
   }
-  return {TX,RX,WALLS,GROUPS,NAMES,MEAS,SHELF,LAM,setPattern,patGain,buildScene,plateSeg,trace,evalAll,metrics};
+  return {beamRays,TX,RX,WALLS,GROUPS,NAMES,MEAS,SHELF,LAM,setPattern,patGain,buildScene,plateSeg,trace,evalAll,metrics};
 })();
 
 
@@ -412,7 +436,7 @@ const PRESETS=[
   {name:'修正案（C壁中央＋角）',beam:225,plates:[{wall:0,s:3.55},{wall:0,s:4.15},{wall:3,s:0},{wall:4,s:0},{wall:2,s:1.57},{wall:2,s:0.97}]},
   {name:'D壁に斜め1枚',beam:180,plates:[{wall:4,s:1.1,tilt:20}]}
 ];
-const state={beam:225,plates:JSON.parse(JSON.stringify(PRESETS[3].plates)),order:4,wallAdj:-6,heat:false,sel:null,preset:3};
+const state={beam:225,plates:JSON.parse(JSON.stringify(PRESETS[3].plates)),order:4,wallAdj:-6,heat:false,showBeam:true,sel:null,preset:3};
 state.plates.forEach(p=>{p.tilt=p.tilt||0;p.len=p.len||0.6;});
 const cache={}; let res=null, timer=null, heatGen=0, heatImg=null, busyOpt=false;
 const meanMeas=PMC.MEAS.reduce((a,b)=>a+b,0)/24;
@@ -471,9 +495,12 @@ function buildPlan(){
 }
 function drawPlan(){
   // ビーム
-  gBeam.innerHTML=''; const T=PMC.TX; let d='';
-  for(let a=-180;a<=180;a+=1){ const g=PMC.patGain(a); const r=Math.max(0,(g+30)/30)*1.05; const th=(state.beam+a)*Math.PI/180; d+=(a===-180?'M':'L')+(X(T.x+r*Math.cos(th))).toFixed(1)+','+(Y(T.y+r*Math.sin(th))).toFixed(1); }
-  el('path',{d:d+'Z',fill:'var(--tx)','fill-opacity':.18,stroke:'var(--tx)','stroke-width':1.5},gBeam);
+  gBeam.innerHTML=''; const T=PMC.TX;
+  if(state.showBeam){
+    const legs=PMC.beamRays(state.plates,{beam:state.beam,wallAdj:state.wallAdj,span:13,step:1});
+    legs.sort((a,b)=>a.db-b.db).forEach(l=>{ const op=Math.min(.85,.85*(1+l.db/18)); if(op<.05) return;
+      el('line',{x1:X(l.x1).toFixed(1),y1:Y(l.y1).toFixed(1),x2:X(l.x2).toFixed(1),y2:Y(l.y2).toFixed(1),stroke:'var(--tx)','stroke-opacity':op.toFixed(2),'stroke-width':l.k===0?1.6:1.2,'stroke-linecap':'round'},gBeam); });
+  }
   const th=state.beam*Math.PI/180, hx=X(T.x+1.3*Math.cos(th)), hy=Y(T.y+1.3*Math.sin(th));
   el('line',{x1:X(T.x),y1:Y(T.y),x2:hx,y2:hy,stroke:'var(--tx)','stroke-width':1.5,'stroke-dasharray':'5 4'},gBeam);
   el('circle',{cx:X(T.x),cy:Y(T.y),r:8,fill:'var(--tx)',stroke:'var(--ring)','stroke-width':2},gBeam);
@@ -646,6 +673,7 @@ function syncBeam(){ $('beam').value=state.beam; $('beamVal').textContent=state.
 $('beam').addEventListener('input',e=>{ state.beam=+e.target.value; $('beamVal').textContent=state.beam+'°'; state.preset=-1; markPreset(); changed(); });
 $('order').addEventListener('change',e=>{ state.order=+e.target.value; drawFit(); changed(); });
 $('wadj').addEventListener('input',e=>{ state.wallAdj=-(+e.target.value); $('wadjVal').textContent='+'+e.target.value+' dB'; drawFit(); changed(); });
+$('beamBtn').addEventListener('click',()=>{ state.showBeam=!state.showBeam; const b=$('beamBtn'); b.classList.toggle('on',state.showBeam); b.setAttribute('aria-pressed',state.showBeam); drawPlan(); });
 $('heatBtn').addEventListener('click',()=>{ state.heat=!state.heat; const b=$('heatBtn'); b.classList.toggle('on',state.heat); b.setAttribute('aria-pressed',state.heat); if(state.heat) runHeat(); else { heatGen++; if(heatImg){ heatImg.remove(); heatImg=null; } setStatus(); } });
 $('addBtn').addEventListener('click',()=>{ if(state.plates.length>=6) return; const used=state.plates.filter(p=>p.wall===4).length; state.plates.push({wall:4,s:Math.min(3,0.9+used*0.65),tilt:0,len:0.6}); state.preset=-1; markPreset(); drawPlates(); changed(); });
 function markPreset(){ [...$('presets').children].forEach((b,i)=>b.classList.toggle('on',i===state.preset)); }
