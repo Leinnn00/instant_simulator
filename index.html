@@ -837,6 +837,7 @@ function makeZip(files){
 function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); }
 
 // ---- 書き出し ----
+const PARKED=i=>{ const y=1.0+0.1*i; return {s:{x1:-0.05,y1:y,x2:-0.05,y2:y+0.01},z0:WI_ZA-0.005,z1:WI_ZA+0.005,h:0.01,cx:-0.05,cy:y+0.005}; };
 function plate3D(p){ const s=PMC.plateSeg(p); const h=0.24/(p.len||0.6); return {s,z0:WI_ZA-h/2,z1:WI_ZA+h/2,h,cx:(s.x1+s.x2)/2,cy:(s.y1+s.y2)/2}; }
 // ---- 部屋の書き出し：WI プロジェクト（testHisui）の部屋ファイルをそのまま入れる ----
 // シミュレーターの部屋もこの寸法に合わせてある（棚 x 2.50〜2.95、設備盤 y 4.40〜5.10 など）
@@ -881,8 +882,8 @@ function readmeText(st,ant,pow){
   L.push('','[WI での手順]',
     '1. WI を閉じて、プロジェクトフォルダをバックアップする。',
     ...(st.room?['1b. 部屋も置き換える場合: newFlp.flp、kinnzokunotabna.object、setubibann.object、kinnzoku_window.object、metal_door.object を、プロジェクトの同じ名前のファイルと置き換える（.setup の feature に書かれた名前と同じ）。']:[]),
-    (st.plates.length?'2. Aluminum_plate1.object 〜 Aluminum_plate'+st.plates.length+'.object を、プロジェクトの同じ名前のファイルと置き換える。':'2. 板なしの配置なので、板はすべて WI 上で非アクティブにする。'),
-    ...(st.plates.length<6?['   板が6枚より少ないので、残りの板（Aluminum_plate'+(st.plates.length+1)+' 以降）を WI 上で非アクティブにする。']:[]),
+    '2. Aluminum_plate1.object 〜 Aluminum_plate6.object を、プロジェクトの同じ名前のファイルと置き換える（6つとも必ず置き換える）。',
+    ...(st.plates.length<6?['   板が6枚より少ないので、使わない板（Aluminum_plate'+(st.plates.length+1)+' 以降）は1 cm 角にして部屋の外（D壁の裏、x = −0.05 m）に置いてある。WI がファイルを探して止まらないようにするためで、計算には影響しない。気になるなら WI 上で非アクティブにしてもよい。']:[]),
     '3. txrx_after.txrx の中身で、プロジェクトの .txrx（.setup の txrx_sets に書かれた名前）を置き換える。受信点セットが Points 型の P01〜P24 になる。',
     '4. 対処後を計算する。',
     '5. 基準環境は、板をすべて非アクティブにし、.txrx を txrx_base.txrx（ビーム180°）に置き換えて計算する。',
@@ -898,6 +899,8 @@ $('wiGain').addEventListener('input',syncPowHint); syncPowHint();
 $('wiExport').addEventListener('click',()=>{
   const ant=Math.max(1,Math.round(+$('wiAnt').value||4)), pow=txPower(); const st={beam:state.beam,plates:state.plates};
   const files=st.plates.map((p,i)=>({name:'Aluminum_plate'+(i+1)+'.object',text:objectText('Aluminum_plate'+(i+1),plate3D(p))}));
+  // WI の .setup は Aluminum_plate1〜6 を必ず読みに行くので、使わない板も1 cm 角で部屋の外（D壁の裏）に置いて書き出す
+  for(let i=st.plates.length;i<6;i++) files.push({name:'Aluminum_plate'+(i+1)+'.object',text:objectText('Aluminum_plate'+(i+1),PARKED(i))});
   st.room=$('wiRoom').checked;
   if(st.room){ for(const nm in WI_ROOM_FILES) files.push({name:nm,text:WI_ROOM_FILES[nm]}); }
   files.push({name:'txrx_after.txrx',text:txrxText(st.beam,ant,pow)},{name:'txrx_base.txrx',text:txrxText(180,ant,pow)},{name:'README.txt',text:readmeText(st,ant,pow)});
