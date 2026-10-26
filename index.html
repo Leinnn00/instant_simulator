@@ -10,7 +10,7 @@
 /* レイアウト: 左に平面図（操作する計器）、右に評価値と操作。狭い画面では縦に積む */
 :root{
   --bg:#f1f4f6; --surface:#fcfcfb; --ink:#0f1720; --ink2:#4b5560; --muted:#87919a; --line:#d6dbdf;
-  --wall:#27313b; --gyp:#a3acb4; --plate:#eb6834; --tx:#4a3aa7; --after:#2a78d6; --base:#8a939c; --install:#1baf7a;
+  --wall:#27313b; --gyp:#a3acb4; --plate:#eb6834; --tx:#4a3aa7; --after:#2a78d6; --base:#8a939c; --wi:#c2338a; --install:#1baf7a;
   --ray:#0f1720; --ring:#fcfcfb;
   --s0:#cde2fb; --s1:#9ec5f4; --s2:#6da7ec; --s3:#3987e5; --s4:#256abf; --s5:#184f95; --s6:#0d366b;
   --font:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
@@ -18,13 +18,13 @@
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#111416; --surface:#1a1d1f; --ink:#f2f4f5; --ink2:#c0c6cb; --muted:#868e95; --line:#32383d;
-  --wall:#d5dade; --gyp:#69727a; --plate:#e8703f; --tx:#9085e9; --after:#3987e5; --base:#868e95; --install:#199e70;
+  --wall:#d5dade; --gyp:#69727a; --plate:#e8703f; --tx:#9085e9; --after:#3987e5; --base:#868e95; --wi:#ec7fbf; --install:#199e70;
   --ray:#f2f4f5; --ring:#1a1d1f;
   --s0:#0d366b; --s1:#184f95; --s2:#256abf; --s3:#3987e5; --s4:#6da7ec; --s5:#9ec5f4; --s6:#cde2fb;
   color-scheme:dark } }
 :root[data-theme="dark"]{
   --bg:#111416; --surface:#1a1d1f; --ink:#f2f4f5; --ink2:#c0c6cb; --muted:#868e95; --line:#32383d;
-  --wall:#d5dade; --gyp:#69727a; --plate:#e8703f; --tx:#9085e9; --after:#3987e5; --base:#868e95; --install:#199e70;
+  --wall:#d5dade; --gyp:#69727a; --plate:#e8703f; --tx:#9085e9; --after:#3987e5; --base:#868e95; --wi:#ec7fbf; --install:#199e70;
   --ray:#f2f4f5; --ring:#1a1d1f;
   --s0:#0d366b; --s1:#184f95; --s2:#256abf; --s3:#3987e5; --s4:#6da7ec; --s5:#9ec5f4; --s6:#cde2fb;
   color-scheme:dark }
@@ -110,6 +110,16 @@ th:first-child,td:first-child{text-align:left}
 .notes{color:var(--ink2);font-size:13px;max-width:70ch}
 .notes ul{margin:4px 0 0;padding-left:1.2em}
 svg text{font-family:var(--font)}
+.wicols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.wibox{border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-width:0}
+.wibox h3{font-size:13.5px;margin:0 0 8px}
+.wnum{width:6em;font-family:var(--mono);padding:4px 6px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink)}
+.wfile{flex-wrap:wrap}.wfile label{flex:1 1 100%;font-size:12.5px;color:var(--ink2)}.wfile input{max-width:100%;font-size:12.5px}
+.wikey{color:var(--wi);font-weight:600}
+.wiwarn{color:var(--plate)}
+#wiGeoOut h3,#wiCmpOut h3{font-size:13.5px;margin:14px 0 6px}
+#wiGeoOut td.l,#wiCmpOut td.l{text-align:left;white-space:normal}
+#wiCmpOut .scores{margin-top:4px}
 </style>
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
@@ -118,7 +128,7 @@ svg text{font-family:var(--font)}
 <div class="wrap">
   <header>
     <h1>PMC7 反射板シミュレーター</h1>
-    <p>反射板をドラッグし、ビームの向きを変えると、24点の受信電力と評価指標が計算し直されます。平面（高さ1.6 m）だけを見る簡易モデルです。</p>
+    <p>反射板をドラッグし、ビームの向きを変えると、24点の受信電力と評価指標が計算し直されます。平面（高さ1.6 m）だけを見る簡易モデルです。配置は Wireless InSite 用に書き出せ、WI の結果を読み込んで比べられます。</p>
   </header>
 
   <div class="panel">
@@ -224,6 +234,32 @@ svg text{font-family:var(--font)}
         </details>
       </div>
     </div>
+  </div>
+
+  <div class="panel" id="wiPanel">
+    <h2>Wireless InSite との受け渡し</h2>
+    <p class="hint" style="margin-top:0">座標の対応は x がそのまま、<b>y_WI = y − 6.31</b>、高さは床が 0 です（WI の原点は A壁と D壁の角）。向きの軸は同じなので、ビームの方位角は両方で同じ値です。</p>
+    <div class="wicols">
+      <div class="wibox">
+        <h3>書き出す（シミュレーター → WI）</h3>
+        <div class="row"><label for="wiAnt">送信アンテナの番号</label><input type="number" id="wiAnt" class="wnum" value="4" min="1" step="1"></div>
+        <div class="row"><label for="wiGain">そのアンテナの最大利得</label><input type="number" id="wiGain" class="wnum" value="18" step="0.1"><span>dBi</span></div>
+        <p class="hint" id="wiPowHint"></p>
+        <button type="button" id="wiExport">WI用ファイルを書き出す（zip）</button>
+        <p class="hint">いまの板の配置（板ごとの .object）、受信点24点と Tx の .txrx（基準環境用と対処後用）、説明書きをまとめて保存します。板は中心の高さ 1.6 m、横60 cm なら縦40 cm（横40 cm なら縦60 cm）、完全導体で書き出します。</p>
+      </div>
+      <div class="wibox">
+        <h3>読み込む（WI → シミュレーター）</h3>
+        <div class="row wfile"><label for="wiGeo">形状と送受信点（.object / .flp / .txrx、まとめて選択可）</label><input type="file" id="wiGeo" multiple accept=".object,.flp,.txrx"></div>
+        <div class="row wfile"><label for="wiBase">受信電力・基準環境（…paths….p2m がおすすめ。…power….p2m も可）</label><input type="file" id="wiBase" accept=".p2m"></div>
+        <div class="row wfile"><label for="wiAfter">受信電力・対処後（…paths….p2m がおすすめ。…power….p2m も可）</label><input type="file" id="wiAfter" accept=".p2m"></div>
+        <button type="button" id="wiClear">読み込んだものを消す</button>
+        <p class="hint">読み込んだ形状は平面図に<span class="wikey">ピンクの破線</span>で重なります。受信点は位置から P01〜P24 に自動で対応付けます。paths.p2m を入れると、各点の経路の電力を位相なしで足し合わせます（実測の 20 MHz 周波数平均に近い値）。power.p2m は WI が位相込みで合成した値で、点ごとに数 dB 揺れます。</p>
+      </div>
+    </div>
+    <div class="msg" id="wiMsg" aria-live="polite"></div>
+    <div id="wiGeoOut"></div>
+    <div id="wiCmpOut"></div>
   </div>
 
   <div class="panel">
@@ -472,7 +508,7 @@ const fmt=(v,d)=>(v<0?'−':'')+Math.abs(v).toFixed(d==null?1:d);
 const sfmt=(v,d)=>(v>=0?'+':'−')+Math.abs(v).toFixed(d==null?1:d);
 
 // ---- 平面図 ----
-const plan=$('plan'); let gHeat,gRays,gPlates,gPts,gBeam;
+const plan=$('plan'); let gHeat,gRays,gPlates,gPts,gBeam,gWI;
 function buildPlan(){
   plan.innerHTML='';
   const defs=el('defs',{},plan); const cp=el('clipPath',{id:'roomclip'},defs);
@@ -493,6 +529,7 @@ function buildPlan(){
   for(let x=0;x<=7;x++){ el('line',{x1:X(x),x2:X(x),y1:Y(0)+42,y2:Y(0)+50,stroke:'var(--muted)','stroke-width':1.5},plan); const e=el('text',{x:X(x),y:Y(0)+66,'font-size':13,'text-anchor':'middle',fill:'var(--muted)','font-family':'var(--mono)'},plan); e.textContent=x; }
   for(let y=0;y<=6;y++){ el('line',{x1:-66,x2:-58,y1:Y(y),y2:Y(y),stroke:'var(--muted)','stroke-width':1.5},plan); const e=el('text',{x:-70,y:Y(y)+4.5,'font-size':13,'text-anchor':'end',fill:'var(--muted)','font-family':'var(--mono)'},plan); e.textContent=y; }
   { const e=el('text',{x:X(7)+14,y:Y(0)+66,'font-size':13,fill:'var(--muted)'},plan); e.textContent='x (m)'; const f=el('text',{x:-84,y:Y(6)-16,'font-size':13,fill:'var(--muted)'},plan); f.textContent='y (m)'; }
+  gWI=el('g',{'pointer-events':'none'},plan);
   gRays=el('g',{},plan); gBeam=el('g',{},plan); gPts=el('g',{},plan); gPlates=el('g',{},plan);
 }
 function drawPlan(){
@@ -638,7 +675,7 @@ function drawPlates(){
   syncPlateInputs();
   $('addBtn').disabled=state.plates.length>=6;
 }
-function render(){ drawPlan(); drawScores(); drawChart(); scheduleCmp(); }
+function render(){ drawPlan(); drawScores(); drawChart(); scheduleCmp(); if(typeof drawWiCmp==='function') drawWiCmp(); }
 
 // ---- ヒートマップ ----
 const ROOM=PMC.WALLS.map(w=>[w[0],w[1]]);
@@ -769,6 +806,240 @@ $('saveBtn').addEventListener('click',()=>{ if(plans.length>=30){ say('保存で
   const name=$('planName').value.trim()||('案'+(plans.length+1));
   plans.push({name,beam:state.beam,plates:JSON.parse(JSON.stringify(state.plates)),t:Date.now()}); persist(); $('planName').value=''; drawCmp(); say('「'+name+'」を保存しました。'); });
 $('planName').addEventListener('keydown',ev=>{ if(ev.key==='Enter') $('saveBtn').click(); });
+
+// ---- Wireless InSite との受け渡し ----
+// WI の座標: x は同じ、y_WI = y + WI_DY、z は床が 0（WI の原点は A壁と D壁の角）
+const WI_DY=-6.31, WI_ZA=1.6, EIRP_DBM=32;
+const wi={geo:[], sets:[], base:null, after:null};
+const CRLF='\r\n';
+const f10=v=>(Math.abs(v)<5e-11?0:v).toFixed(10), f5=v=>(Math.abs(v)<5e-6?0:v).toFixed(5);
+const toSimY=y=>y-WI_DY, toWiY=y=>y+WI_DY;
+function wiSay(t,warn){ const m=$('wiMsg'); m.textContent=t||''; m.classList.toggle('wiwarn',!!warn); }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function inRoom(x,y){ let c=false; for(let i=0,j=ROOM.length-1;i<ROOM.length;j=i++){ const a=ROOM[i], b=ROOM[j]; if((a[1]>y)!==(b[1]>y) && x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]) c=!c; } return c; }
+
+// 無圧縮の zip を作る（外部ライブラリなし）
+function crc32(u8){ let t=crc32.t; if(!t){ t=crc32.t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } }
+  let c=0xFFFFFFFF; for(let i=0;i<u8.length;i++) c=t[(c^u8[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function makeZip(files){
+  const enc=new TextEncoder(), parts=[], cent=[]; let off=0;
+  const d=new Date(), tm=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1), dt=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate();
+  for(const f of files){ const nm=enc.encode(f.name), data=enc.encode(f.text), crc=crc32(data);
+    const h=new DataView(new ArrayBuffer(30)); h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(6,0x0800,true); h.setUint16(10,tm,true); h.setUint16(12,dt,true); h.setUint32(14,crc,true); h.setUint32(18,data.length,true); h.setUint32(22,data.length,true); h.setUint16(26,nm.length,true);
+    parts.push(h.buffer,nm,data);
+    const c=new DataView(new ArrayBuffer(46)); c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint16(8,0x0800,true); c.setUint16(12,tm,true); c.setUint16(14,dt,true); c.setUint32(16,crc,true); c.setUint32(20,data.length,true); c.setUint32(24,data.length,true); c.setUint16(28,nm.length,true); c.setUint32(42,off,true);
+    cent.push(c.buffer,nm); off+=30+nm.length+data.length; }
+  const cs=cent.reduce((a,b)=>a+b.byteLength,0);
+  const e=new DataView(new ArrayBuffer(22)); e.setUint32(0,0x06054b50,true); e.setUint16(8,files.length,true); e.setUint16(10,files.length,true); e.setUint32(12,cs,true); e.setUint32(16,off,true);
+  return new Blob([...parts,...cent,e.buffer],{type:'application/zip'});
+}
+function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); }
+
+// ---- 書き出し ----
+function plate3D(p){ const s=PMC.plateSeg(p); const h=0.24/(p.len||0.6); return {s,z0:WI_ZA-h/2,z1:WI_ZA+h/2,h,cx:(s.x1+s.x2)/2,cy:(s.y1+s.y2)/2}; }
+function objectText(name,q){
+  const A=[q.s.x1,toWiY(q.s.y1)], B=[q.s.x2,toWiY(q.s.y2)];
+  const v=(P,z)=>f10(P[0])+' '+f10(P[1])+' '+f10(z);
+  return ['Format type:keyword version: 1.1.0','begin_<object> '+name,'begin_<reference> ','cartesian','longitude 0.000000000000000','latitude 0.000000000000000','visible no','sealevel','end_<reference>',
+    'begin_<Material> '+name,'Material 1','PEC','thickness 4.000e-04','begin_<Color> ','ambient 1.000000 1.000000 0.000000 1.000000','diffuse 1.000000 1.000000 0.000000 1.000000','specular 1.000000 1.000000 0.000000 1.000000','emission 0.000000 0.000000 0.000000 0.000000','shininess 50.000000','end_<Color>',
+    'diffuse_scattering_model none','fields_diffusively_scattered 0.400000','cross_polarized_power 0.400000','directive_alpha 4','directive_beta 4','directive_lambda 0.750000','subdivide_facets yes','reflection_coefficient_options do_not_use','roughness 0.000e+00','end_<Material>',
+    'begin_<structure_group> ','begin_<structure> ','begin_<sub_structure> ','begin_<face> ','double_sided','Material 1','nVertices 4',v(A,q.z0),v(A,q.z1),v(B,q.z1),v(B,q.z0),'end_<face>','end_<sub_structure>','end_<structure>','end_<structure_group>',
+    'begin_<ControlVectors> ','CVsVisible no','Stippled no','CVsThickness 3','CVxLength 10.0000000000','CVyLength 10.0000000000','CVzLength 10.0000000000','CVsXaxis 1.0000000000 0.0000000000 0.0000000000','CVsZaxis 0.0000000000 0.0000000000 1.0000000000','end_<ControlVectors>','end_<object>',''].join(CRLF);
+}
+function pattern(ant,wf,phi){ const rz=((phi+180)%360+360)%360-180;
+  return ['begin_<pattern> ','antenna '+ant,'waveform '+wf,'alignmentMode spherical '+f5(phi)+' 90.00000 0.00000','rotation_x_calc 0.00000','rotation_y_calc -0.00000','rotation_z_calc '+f5(rz),'end_<pattern>']; }
+function pointsSet(name,id,pts,isTx,txAnt,txPow,phi){
+  const L=['begin_<points> '+name,'project_id '+id,'active','vertical_line no','pattern_shown no','cube_size 0.25000','CVxLength 10.00000','CVyLength 10.00000','CVzLength 10.00000','AutoPatternScale','ShowDescription yes','CVsVisible no','CVsLocation -1','PatternOption '+(isTx?'TransmitterAntennaOption':'ReceiverAntennaOption'),'CVsThickness 3',
+    'begin_<location> ','begin_<reference> ','cartesian','longitude 0.000000000000000','latitude 0.000000000000000','visible no','terrain','end_<reference>','nVertices '+pts.length];
+  for(const p of pts) L.push(f10(p[0])+' '+f10(p[1])+' '+f10(p[2]));
+  L.push('end_<location>','pattern_show_arrow no','pattern_show_as_sphere no','generate_p2p no','use_apg_acceleration no','is_transmitter '+(isTx?'yes':'no'),'is_receiver '+(isTx?'no':'yes'));
+  L.push('begin_<transmitter> ',...(isTx?pattern(txAnt,-1,phi):pattern(1,-1,0)),'power '+f5(isTx?txPow:0),'end_<transmitter>');
+  L.push('begin_<receiver> ',...(isTx?pattern(1,-1,0):pattern(5,3,0)),'NoiseFigure 3.00000','end_<receiver>');
+  L.push('powerDistribution Uniform 10.00000 10.00000 inactive nosampling 10','end_<points>');
+  return L;
+}
+function txrxText(phi,ant,pow){
+  const tx=[[PMC.TX.x,toWiY(PMC.TX.y),WI_ZA]], rx=PMC.RX.map(r=>[r.x,toWiY(r.y),WI_ZA]);
+  return [...pointsSet('PMC7_TX',1,tx,true,ant,pow,phi),...pointsSet('PMC7_RX',2,rx,false),''].join(CRLF);
+}
+function txPower(){ const g=+$('wiGain').value; return EIRP_DBM-(isFinite(g)?g:0); }
+function syncPowHint(){ $('wiPowHint').textContent='Tx の入力電力は EIRP 32 dBm − 利得 = '+txPower().toFixed(1)+' dBm で書き出します。配布パターンを最大 0 dB に正規化して読み込んだアンテナを使うなら、利得は 0 にしてください。'; }
+function readmeText(st,ant,pow){
+  const L=[]; const now=new Date();
+  L.push('PMC7 反射板シミュレーター → Wireless InSite 書き出し','書き出した日時: '+now.toLocaleString('ja-JP'),'配置のリンク: '+linkFor(st),'');
+  L.push('[座標] x はそのまま、y_WI = y_シミュレーター − 6.31、z は床が 0（WI の原点は A壁と D壁の角）','');
+  L.push('[送信] Tx (x, y, z) = ('+PMC.TX.x.toFixed(2)+', '+toWiY(PMC.TX.y).toFixed(2)+', '+WI_ZA.toFixed(2)+')、ビーム方位 '+st.beam+'°（基準環境用は 180°）、仰角 0°');
+  L.push('       アンテナ番号 '+ant+'、入力電力 '+pow.toFixed(2)+' dBm（EIRP 32 dBm − 利得 '+(EIRP_DBM-pow).toFixed(1)+' dBi）');
+  L.push('[受信] Points 型、P01〜P24 の順に24点、z = '+WI_ZA.toFixed(2)+' m、アンテナ5（オムニ 3 dBi）。出力の Rx# 1 = P01','');
+  L.push('[反射板] 完全導体（PEC）、厚さ 0.4 mm、両面');
+  st.plates.forEach((p,i)=>{ const q=plate3D(p); L.push('  板'+(i+1)+' '+G[p.wall][4]+'  中心 ('+q.cx.toFixed(3)+', '+q.cy.toFixed(3)+') → WI ('+q.cx.toFixed(3)+', '+toWiY(q.cy).toFixed(3)+')、横 '+Math.round((p.len||0.6)*100)+' cm × 縦 '+Math.round(q.h*100)+' cm、z '+q.z0.toFixed(2)+'〜'+q.z1.toFixed(2)+' m、傾き '+(p.tilt||0)+'°'+(p.off>0?'、壁から '+Math.round(p.off*100)+' cm':'')); });
+  if(!st.plates.length) L.push('  （板なし）');
+  L.push('','[WI での手順]',
+    '1. WI を閉じて、プロジェクトフォルダをバックアップする。',
+    (st.plates.length?'2. Aluminum_plate1.object 〜 Aluminum_plate'+st.plates.length+'.object を、プロジェクトの同じ名前のファイルと置き換える。':'2. 板なしの配置なので、板はすべて WI 上で非アクティブにする。'),
+    ...(st.plates.length<6?['   板が6枚より少ないので、残りの板（Aluminum_plate'+(st.plates.length+1)+' 以降）を WI 上で非アクティブにする。']:[]),
+    '3. txrx_after.txrx の中身で、プロジェクトの .txrx（.setup の txrx_sets に書かれた名前）を置き換える。受信点セットが Points 型の P01〜P24 になる。',
+    '4. 対処後を計算する。',
+    '5. 基準環境は、板をすべて非アクティブにし、.txrx を txrx_base.txrx（ビーム180°）に置き換えて計算する。',
+    '6. 出力フォルダの …paths.t001_01.r002.p2m（または …power…）を、基準環境と対処後の両方ともシミュレーターの「読み込む」に入れると、点ごとに比べられる。paths を使うと位相なしで合成するので、実測と比べやすい。','',
+    '[注意] WI の部屋形状（newFlp.flp）と金属棚の位置は書き出していない。棚は WI では x 2.50〜2.95、シミュレーターでは x 2.56〜3.01 で、6 cm ずれている。');
+  return L.join(CRLF)+CRLF;
+}
+$('wiGain').addEventListener('input',syncPowHint); syncPowHint();
+$('wiExport').addEventListener('click',()=>{
+  const ant=Math.max(1,Math.round(+$('wiAnt').value||4)), pow=txPower(); const st={beam:state.beam,plates:state.plates};
+  const files=st.plates.map((p,i)=>({name:'Aluminum_plate'+(i+1)+'.object',text:objectText('Aluminum_plate'+(i+1),plate3D(p))}));
+  files.push({name:'txrx_after.txrx',text:txrxText(st.beam,ant,pow)},{name:'txrx_base.txrx',text:txrxText(180,ant,pow)},{name:'README.txt',text:readmeText(st,ant,pow)});
+  download(makeZip(files),'PMC7_WI_'+encodeState(st).slice(0,60)+'.zip');
+  wiSay('書き出しました（板 '+st.plates.length+' 枚、ビーム '+st.beam+'°）。手順は zip の中の README.txt にあります。');
+});
+
+// ---- 読み込み ----
+function numLines(body){ return body.split(/\r?\n/).map(s=>s.trim()).filter(s=>/^-?\d/.test(s)&&s.split(/\s+/).length===3).map(s=>s.split(/\s+/).map(Number)); }
+function parseFaces(text){
+  const out=[]; const re=/begin_<face>([\s\S]*?)end_<face>/g; let m;
+  while((m=re.exec(text))){ const b=m[1]; const nv=+((b.match(/nVertices\s+(\d+)/)||[])[1]||0); const vs=numLines(b).slice(0,nv); if(vs.length>=3) out.push({inv:/\binvisible\b/.test(b),vs}); }
+  return out;
+}
+function faceSeg(f){ // 垂直な面 → 平面図の線分（sim 座標）
+  const zs=f.vs.map(v=>v[2]); if(Math.max(...zs)-Math.min(...zs)<0.02) return null;
+  const P=f.vs.map(v=>[v[0],toSimY(v[1])]); let best=null;
+  for(let i=0;i<P.length;i++) for(let j=i+1;j<P.length;j++){ const d=Math.hypot(P[i][0]-P[j][0],P[i][1]-P[j][1]); if(!best||d>best.d) best={d,a:P[i],b:P[j]}; }
+  return best&&best.d>0.005?{x1:best.a[0],y1:best.a[1],x2:best.b[0],y2:best.b[1],len:best.d,z0:Math.min(...zs),z1:Math.max(...zs)}:null;
+}
+function parseGeo(name,text){
+  const pec=/\n\s*PEC\s*\r?\n/.test(text); const faces=parseFaces(text).filter(f=>!f.inv); const segs=faces.map(faceSeg).filter(Boolean);
+  const kind=/\.flp$/i.test(name)?'flp':'object'; return {name,kind,pec,segs,faces:faces.length};
+}
+function parseSets(name,text){
+  const out=[]; const re=/begin_<(points|grid)>\s*([^\r\n]*)([\s\S]*?)end_<\1>/g; let m;
+  while((m=re.exec(text))){ const type=m[1], label=m[2].trim(), b=m[3];
+    const loc=(b.match(/begin_<location>([\s\S]*?)end_<location>/)||[])[1]||''; const nv=+((loc.match(/nVertices\s+(\d+)/)||[])[1]||0); const vs=numLines(loc).slice(0,nv);
+    let pts=vs;
+    if(type==='grid'&&vs.length){ const s1=+(loc.match(/side1\s+(\S+)/)||[])[1], s2=+(loc.match(/side2\s+(\S+)/)||[])[1], sp=+(loc.match(/spacing\s+(\S+)/)||[])[1]; pts=[];
+      if(sp>0) for(let j=0;j<=Math.floor(s2/sp+1e-9);j++) for(let i=0;i<=Math.floor(s1/sp+1e-9);i++) pts.push([vs[0][0]+i*sp,vs[0][1]+j*sp,vs[0][2]]); }
+    const isTx=/is_transmitter yes/.test(b); const tb=(b.match(/begin_<transmitter>([\s\S]*?)end_<transmitter>/)||[])[1]||'';
+    const al=tb.match(/alignmentMode spherical\s+(\S+)\s+(\S+)/); const ant=(tb.match(/antenna\s+(-?\d+)/)||[])[1]; const pow=(tb.match(/\bpower\s+(\S+)/)||[])[1];
+    out.push({file:name,type,label,isTx,isRx:/is_receiver yes/.test(b),pts:pts.map(p=>[p[0],toSimY(p[1]),p[2]]),phi:al?+al[1]:null,theta:al?+al[2]:null,ant:ant!=null?+ant:null,pow:pow!=null?+pow:null}); }
+  return out;
+}
+function nearestRx(x,y){ let bi=-1,bd=1e9; PMC.RX.forEach((r,i)=>{ const d=Math.hypot(r.x-x,r.y-y); if(d<bd){bd=d;bi=i;} }); return {i:bi,d:bd}; }
+// p2m の種類を見分ける。paths（経路ごと）なら位相なしで足し合わせ、power なら WI の値（位相込み）をそのまま使う
+function p2mKind(text){
+  const head=text.split(/\r?\n/).filter(s=>s.trim().startsWith('#')).join('\n');
+  if(/number of paths for this point/i.test(head)) return 'paths';
+  if(/<\s*Power\s*\(dBm\)\s*>/i.test(head)&&/<\s*X\s*\(m\)\s*>/i.test(head)) return 'power';
+  if(/Path\s*Loss/i.test(head)) return 'pathloss';
+  if(/Path\s*Gain/i.test(head)) return 'pathgain';
+  if(/Delay\s*Spread/i.test(head)) return 'spread';
+  if(/Transmission\s*Loss/i.test(head)) return 'txloss';
+  return 'unknown';
+}
+function placeRows(name,rows){ // rows: [{n,x,y(sim),z,pw}]
+  const byP=new Array(24).fill(null); const extra=[];
+  for(const a of rows){ const n=nearestRx(a.x,a.y); if(n.d>0.3){ extra.push(a.n); continue; }
+    if(byP[n.i]) throw new Error(name+': WI の受信点 '+byP[n.i].n+' と '+a.n+' が同じ P'+String(n.i+1).padStart(2,'0')+' に対応しました。受信点の位置を確認してください。');
+    byP[n.i]={n:a.n,x:a.x,y:a.y,z:a.z,pw:a.pw,coh:a.coh,np:a.np,d:n.d}; }
+  return {byP,extra,miss:byP.map((v,i)=>v?null:i+1).filter(Boolean)};
+}
+function parsePathsP2m(name,text){
+  const L=text.split(/\r?\n/).map(s=>s.trim()).filter(s=>s&&!s.startsWith('#'));
+  let i=0; const nrx=parseInt(L[i++],10); if(!(nrx>0)) throw new Error(name+' の受信点の数が読めませんでした。');
+  const rows=[], noPath=[];
+  for(let r=0;r<nrx;r++){
+    const h=(L[i++]||'').split(/\s+/).map(Number); const rid=h[0], np=h[1];
+    if(!isFinite(rid)||!isFinite(np)) throw new Error(name+' の '+(r+1)+' 点目の見出しが読めませんでした。ファイルが途中で切れていないか確認してください。');
+    if(np===0){ noPath.push(rid); continue; }
+    const coh=parseFloat((L[i++]||'').split(/\s+/)[0]);
+    let mw=0, pos=null;
+    for(let k=0;k<np;k++){
+      const a=(L[i++]||'').split(/\s+/).map(Number); const nint=a[1], p=a[2];
+      if(!isFinite(nint)||!isFinite(p)) throw new Error(name+' の受信点 '+rid+' の経路 '+(k+1)+' が読めませんでした。');
+      mw+=Math.pow(10,p/10); i++; // 経路の種類（Tx-R-Rx など）
+      for(let c=0;c<nint+2;c++){ const v=(L[i++]||'').split(/\s+/).map(Number); if(c===nint+1) pos=v; }
+    }
+    if(!pos||pos.length<3||!pos.every(isFinite)) throw new Error(name+' の受信点 '+rid+' の位置が読めませんでした。');
+    rows.push({n:rid,x:pos[0],y:toSimY(pos[1]),z:pos[2],pw:10*Math.log10(mw),coh,np});
+  }
+  return {rows,noPath};
+}
+function parseP2m(name,text){
+  const kind=p2mKind(text);
+  const names={pathloss:'伝搬損失（pl）のファイル',pathgain:'伝搬利得（pg）のファイル',spread:'遅延スプレッド（spread）のファイル',txloss:'送信損失（txloss）のファイル',unknown:'受信電力のファイルではないよう'};
+  if(kind!=='paths'&&kind!=='power') throw new Error(name+' は'+names[kind]+'です。…paths….p2m（おすすめ）か …power….p2m を選んでください。');
+  let rows, noPath=[];
+  if(kind==='paths'){ const r=parsePathsP2m(name,text); rows=r.rows; noPath=r.noPath; }
+  else rows=text.split(/\r?\n/).filter(s=>s.trim()&&!s.trim().startsWith('#')).map(s=>s.trim().split(/\s+/).map(Number)).filter(a=>a.length>=6&&a.every(isFinite)).map(a=>({n:a[0],x:a[1],y:toSimY(a[2]),z:a[3],pw:a[5]}));
+  const pl=placeRows(name,rows);
+  return {name,kind,byP:pl.byP,miss:pl.miss,extra:pl.extra,noPath,rows:rows.length+noPath.length};
+}
+function readFile(f){ return new Promise((ok,ng)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result)); r.onerror=()=>ng(r.error); r.readAsText(f); }); }
+$('wiGeo').addEventListener('change',async ev=>{ const fs=[...ev.target.files]; if(!fs.length) return; const bad=[];
+  for(const f of fs){ try{ const t=await readFile(f);
+      if(/\.txrx$/i.test(f.name)){ wi.sets=wi.sets.filter(s=>s.file!==f.name).concat(parseSets(f.name,t)); }
+      else if(/\.(object|flp)$/i.test(f.name)){ wi.geo=wi.geo.filter(g=>g.name!==f.name).concat([parseGeo(f.name,t)]); }
+      else bad.push(f.name); }catch(e){ bad.push(f.name); } }
+  ev.target.value=''; drawWiGeo(); drawWiGeoTable(); wiSay(fs.length-bad.length+' 個のファイルを読み込みました。'+(bad.length?'読めなかったもの: '+bad.join('、'):''),bad.length>0); });
+function p2mInput(id,key){ $(id).addEventListener('change',async ev=>{ const f=ev.target.files[0]; ev.target.value=''; if(!f) return;
+  try{ const r=parseP2m(f.name,await readFile(f)); wi[key]=r; drawWiCmp();
+    wiSay(f.name+' を読み込みました（'+r.rows+' 点、'+(r.kind==='paths'?'経路ごとの電力を位相なしで合成':'WI の受信電力〈位相込み〉をそのまま使用')+'）。'+(r.miss.length?' 対応する点がない: P'+r.miss.map(n=>String(n).padStart(2,'0')).join(', P'):'')+(r.noPath.length?' 経路が1本もない受信点: Rx# '+r.noPath.join(', '):'')+(r.extra.length?' 受信エリアの外の点 '+r.extra.length+' 個は無視しました。':''),r.miss.length>0); }
+  catch(e){ wiSay(e.message,true); } }); }
+p2mInput('wiBase','base'); p2mInput('wiAfter','after');
+$('wiClear').addEventListener('click',()=>{ wi.geo=[]; wi.sets=[]; wi.base=null; wi.after=null; drawWiGeo(); drawWiGeoTable(); drawWiCmp(); wiSay('読み込んだものを消しました。'); });
+
+function drawWiGeo(){ if(!gWI) return; gWI.innerHTML='';
+  for(const g of wi.geo) for(const s of g.segs) el('line',{x1:X(s.x1).toFixed(1),y1:Y(s.y1).toFixed(1),x2:X(s.x2).toFixed(1),y2:Y(s.y2).toFixed(1),stroke:'var(--wi)','stroke-width':g.kind==='flp'?2:(g.pec?4:2.5),'stroke-dasharray':'7 5','stroke-linecap':'round'},gWI);
+  for(const s of wi.sets) for(const p of s.pts){ const x=X(p[0]), y=Y(p[1]);
+    if(s.isTx){ el('rect',{x:x-8,y:y-8,width:16,height:16,transform:'rotate(45 '+x+' '+y+')',fill:'none',stroke:'var(--wi)','stroke-width':2.5},gWI);
+      if(s.phi!=null){ const th=s.phi*Math.PI/180; el('line',{x1:x,y1:y,x2:x+130*Math.cos(th),y2:y-130*Math.sin(th),stroke:'var(--wi)','stroke-width':1.5,'stroke-dasharray':'3 4'},gWI); } }
+    else el('path',{d:'M'+(x-6)+' '+(y-6)+'L'+(x+6)+' '+(y+6)+'M'+(x+6)+' '+(y-6)+'L'+(x-6)+' '+(y+6),stroke:'var(--wi)','stroke-width':2.2},gWI); }
+}
+function cm(v){ return Math.round(v*100); }
+function drawWiGeoTable(){ const out=$('wiGeoOut'); if(!wi.geo.length&&!wi.sets.length){ out.innerHTML=''; return; } let h='';
+  const plates=wi.geo.filter(g=>g.kind==='object'&&g.segs.length===1&&g.segs[0].len<1.5);
+  if(plates.length){ h+='<h3>板（面が1枚で横 1.5 m 未満の .object）</h3><div class="tablewrap"><table><tr><th class="l">ファイル</th><th>中心 x</th><th>中心 y</th><th>横 (cm)</th><th>z (m)</th><th class="l">シミュレーターのいまの板と比べると</th></tr>';
+    const sim=state.plates.map(p=>plate3D(p));
+    for(const g of plates){ const s=g.segs[0], cx=(s.x1+s.x2)/2, cy=(s.y1+s.y2)/2; let note=[];
+      if(!inRoom(cx,cy)) note.push('<span class="wiwarn">部屋の外にあります</span>');
+      if(Math.abs(s.len-0.6)>0.02&&Math.abs(s.len-0.4)>0.02) note.push('<span class="wiwarn">横幅が 60/40 cm でない</span>');
+      let bi=-1,bd=1e9; sim.forEach((q,i)=>{ const d=Math.hypot(q.cx-cx,q.cy-cy); if(d<bd){bd=d;bi=i;} });
+      if(bi>=0) note.push('いちばん近いのは板'+(bi+1)+'（中心が '+cm(bd)+' cm 離れている）');
+      h+='<tr><td class="l">'+esc(g.name)+'</td><td class="num">'+cx.toFixed(3)+'</td><td class="num">'+cy.toFixed(3)+'</td><td class="num">'+cm(s.len)+'</td><td class="num">'+s.z0.toFixed(2)+'〜'+s.z1.toFixed(2)+'</td><td class="l">'+note.join('、')+'</td></tr>'; }
+    h+='</table></div>'; }
+  const others=wi.geo.filter(g=>!plates.includes(g)); if(others.length) h+='<p class="hint">形状: '+others.map(g=>esc(g.name)+'（面 '+g.faces+' 枚'+(g.pec?'、金属':'')+'）').join('、')+'</p>';
+  for(const s of wi.sets){
+    if(s.isTx&&s.pts.length){ const p=s.pts[0]; const d=Math.hypot(p[0]-PMC.TX.x,p[1]-PMC.TX.y);
+      h+='<h3>送信機 '+esc(s.label)+'（'+esc(s.file)+'）</h3><p class="hint">位置 ('+p[0].toFixed(3)+', '+p[1].toFixed(3)+', '+p[2].toFixed(2)+') m、シミュレーターの Tx から '+cm(d)+' cm'+(d>0.02?' <span class="wiwarn">ずれています</span>':'')+(Math.abs(p[2]-WI_ZA)>0.01?'、<span class="wiwarn">高さが 1.6 m でない</span>':'')+'。<br>ビーム方位 '+(s.phi!=null?s.phi.toFixed(1)+'°':'不明')+'（シミュレーターはいま '+state.beam+'°）、仰角 '+(s.theta!=null?(90-s.theta).toFixed(1)+'°':'不明')+'、アンテナ番号 '+(s.ant??'不明')+'、入力電力 '+(s.pow!=null?s.pow.toFixed(1)+' dBm':'不明')+'。EIRP が 32 dBm になるのは、このアンテナの利得が '+(s.pow!=null?(EIRP_DBM-s.pow).toFixed(1)+' dBi':'？')+' のときです。</p>'; }
+    if(s.isRx){ const m=s.pts.map(p=>({p,n:nearestRx(p[0],p[1])})); const used=m.filter(o=>o.n.d<=0.3); const maxd=used.reduce((a,o)=>Math.max(a,o.n.d),0); const zs=[...new Set(s.pts.map(p=>p[2].toFixed(2)))];
+      const order=used.map(o=>o.n.i+1); const inOrder=order.every((n,i)=>n===i+1)&&order.length===24;
+      h+='<h3>受信点 '+esc(s.label)+'（'+esc(s.file)+'、'+s.type+' 型、'+s.pts.length+' 点）</h3><p class="hint">P01〜P24 に対応した点 '+used.length+' / 24、位置のずれは最大 '+cm(maxd)+' cm'+(maxd>0.02?' <span class="wiwarn">ずれています</span>':'')+'、高さ '+zs.join(' / ')+' m'+(zs.length!==1||zs[0]!=='1.60'?' <span class="wiwarn">1.6 m でない</span>':'')+'。<br>番号の並び: '+(inOrder?'Rx# がそのまま P 番号になっています。':'Rx# と P 番号が違います（Rx# 1, 2, 3 … → P'+order.slice(0,8).map(n=>String(n).padStart(2,'0')).join(', P')+' …）。読み込み時は位置で対応付けます。')+'</p>'; }
+  }
+  out.innerHTML=h;
+}
+function low6(a){ return a.slice().sort((x,y)=>x-y).slice(0,6).reduce((x,y)=>x+y,0)/6; }
+function drawWiCmp(){ const out=$('wiCmpOut'); if(!out) return; const B=wi.base, A=wi.after; if(!B&&!A){ out.innerHTML=''; return; }
+  const ok=r=>r&&r.byP.every(Boolean); let h='<h3>WI の受信電力（P 番号に並べ替え）</h3>';
+  const kname=r=>r.kind==='paths'?'paths.p2m（位相なしで合成）':'power.p2m（位相込み）';
+  h+='<p class="hint">'+[B?'基準環境: '+kname(B):'',A?'対処後: '+kname(A):''].filter(Boolean).join('、')+(B&&A&&B.kind!==A.kind?' <span class="wiwarn">基準環境と対処後で合成の仕方が違います。同じ種類のファイルにそろえてください。</span>':'')+(((B&&B.kind==='power')||(A&&A.kind==='power'))?'<br>実測と比べるなら paths.p2m がおすすめです。power.p2m は位相込みなので、点ごとに数 dB 揺れます。':'')+'</p>';
+  const simD=res.p1.map((v,i)=>v-res.p0[i]);
+  const both=ok(B)&&ok(A);
+  if(both){ const b=B.byP.map(v=>v.pw), a=A.byP.map(v=>v.pw); const wd=a.map((v,i)=>v-b[i]);
+    const wAvg=wd.reduce((x,y)=>x+y,0)/24, wLow=low6(a)-low6(b); const diff=wd.map((v,i)=>v-simD[i]); const rmse=Math.sqrt(diff.reduce((x,y)=>x+y*y,0)/24);
+    const mx=wd.reduce((x,y)=>x+y,0)/24, my=simD.reduce((x,y)=>x+y,0)/24; let sxy=0,sxx=0,syy=0; for(let i=0;i<24;i++){ sxy+=(wd[i]-mx)*(simD[i]-my); sxx+=(wd[i]-mx)**2; syy+=(simD[i]-my)**2; } const r=sxx&&syy?sxy/Math.sqrt(sxx*syy):NaN;
+    h+='<div class="scores"><div class="score"><div class="k">ΔP_avg</div><div class="v">'+sfmt(wAvg,2)+'<span class="u">dB</span></div><div class="s">WI ／ シミュレーター '+sfmt(res.m.avg,2)+'</div></div>'+
+      '<div class="score"><div class="k">ΔP_low</div><div class="v">'+sfmt(wLow,2)+'<span class="u">dB</span></div><div class="s">WI 下位6点 '+fmt(low6(b))+' → '+fmt(low6(a))+' dBm ／ シミュレーター '+sfmt(res.m.low,2)+'</div></div>'+
+      '<div class="score"><div class="k">点ごとの ΔP の差</div><div class="v">'+rmse.toFixed(1)+'<span class="u">dB</span></div><div class="s">RMSE（WI − シミュレーター）、相関 '+(isFinite(r)?r.toFixed(2):'–')+'</div></div></div>';
+    h+='<p class="hint">シミュレーター側はいまの配置とビーム（'+state.beam+'°、板 '+state.plates.length+' 枚）で計算した値です。WI と同じ配置にしてから比べてください。</p>'; }
+  else if(B||A) h+='<p class="hint">基準環境と対処後の両方を読み込むと、ΔP_avg・ΔP_low と点ごとの比較が出ます。</p>';
+  if(ok(B)){ const d=B.byP.map((v,i)=>v.pw-PMC.MEAS[i]); const m=d.reduce((x,y)=>x+y,0)/24; const sd=Math.sqrt(d.reduce((x,y)=>x+(y-m)**2,0)/24);
+    h+='<p class="hint">WI の基準環境と実測の差: 平均 '+sfmt(m)+' dB'+(Math.abs(m)>6?' <span class="wiwarn">（送信電力やアンテナ利得の設定を確認）</span>':'')+'、一律の差を除いた標準偏差 '+sd.toFixed(1)+' dB（シミュレーターの当てはまりは「モデルの設定と限界」を参照）。</p>'; }
+  const zs=[...new Set([B,A].filter(Boolean).flatMap(r=>r.byP.filter(Boolean).map(v=>v.z.toFixed(2))))]; const md=Math.max(0,...[B,A].filter(Boolean).flatMap(r=>r.byP.filter(Boolean).map(v=>v.d)));
+  if(md>0.02||zs.some(z=>z!=='1.60')) h+='<p class="hint wiwarn">WI の受信点が P の位置から最大 '+cm(md)+' cm ずれ、高さは '+zs.join(' / ')+' m です。条件が揃っていないので、差の一部は位置のずれによるものです。</p>';
+  h+='<div class="tablewrap"><table><tr><th>点</th><th>実測</th><th>WI 基準</th><th>WI 対処後</th><th>WI ΔP</th><th>シミュ ΔP</th><th>差</th><th>位置ずれ (cm)</th></tr>';
+  for(let i=0;i<24;i++){ const b=B&&B.byP[i], a=A&&A.byP[i]; const wd=b&&a?a.pw-b.pw:null; const d=Math.max(b?b.d:0,a?a.d:0);
+    h+='<tr><td>P'+String(i+1).padStart(2,'0')+'</td><td class="num">'+fmt(PMC.MEAS[i],2)+'</td><td class="num">'+(b?fmt(b.pw,2):'–')+'</td><td class="num">'+(a?fmt(a.pw,2):'–')+'</td><td class="num">'+(wd!=null?sfmt(wd):'–')+'</td><td class="num">'+sfmt(simD[i])+'</td><td class="num">'+(wd!=null?sfmt(wd-simD[i]):'–')+'</td><td class="num">'+((b||a)?cm(d):'–')+'</td></tr>'; }
+  h+='</table></div>'; out.innerHTML=h;
+}
 
 readRamp(); buildPlan();
 { const st=decodeState(location.hash); if(st){ state.beam=st.beam; state.plates=st.plates; state.preset=-1; } }
