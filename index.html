@@ -245,8 +245,9 @@ svg text{font-family:var(--font)}
         <div class="row"><label for="wiAnt">送信アンテナの番号</label><input type="number" id="wiAnt" class="wnum" value="4" min="1" step="1"></div>
         <div class="row"><label for="wiGain">そのアンテナの最大利得</label><input type="number" id="wiGain" class="wnum" value="18" step="0.1"><span>dBi</span></div>
         <p class="hint" id="wiPowHint"></p>
+        <div class="row"><label><input type="checkbox" id="wiRoom" checked> 部屋と金属物も書き出す（シミュレーターの形で）</label></div>
         <button type="button" id="wiExport">WI用ファイルを書き出す（zip）</button>
-        <p class="hint">いまの板の配置（板ごとの .object）、受信点24点と Tx の .txrx（基準環境用と対処後用）、説明書きをまとめて保存します。板は中心の高さ 1.6 m、横60 cm なら縦40 cm（横40 cm なら縦60 cm）、完全導体で書き出します。</p>
+        <p class="hint">いまの板の配置（板ごとの .object）、受信点24点と Tx の .txrx（基準環境用と対処後用）、説明書きをまとめて保存します。「部屋と金属物も書き出す」を選ぶと、部屋（newFlp.flp）と金属棚・設備盤・金属窓・金属扉の .object も、シミュレーターと同じ寸法で入ります。ファイル名は今の WI プロジェクトと同じです。板は中心の高さ 1.6 m、横60 cm なら縦40 cm（横40 cm なら縦60 cm）、完全導体で書き出します。</p>
       </div>
       <div class="wibox">
         <h3>読み込む（WI → シミュレーター）</h3>
@@ -837,6 +838,51 @@ function download(blob,name){ const a=document.createElement('a'); a.href=URL.cr
 
 // ---- 書き出し ----
 function plate3D(p){ const s=PMC.plateSeg(p); const h=0.24/(p.len||0.6); return {s,z0:WI_ZA-h/2,z1:WI_ZA+h/2,h,cx:(s.x1+s.x2)/2,cy:(s.y1+s.y2)/2}; }
+// ---- 部屋の書き出し（シミュレーターの形をそのまま WI へ） ----
+// 材質は ITU-R P.2040 の 24.15 GHz での値。壁はシミュレーターの石膏ボードと同じ（実測合わせの +6 dB 補正は材質では表せないので入れない）
+const WI_MATS={
+  wall:{name:'Plaster',eps:2.73,sig:0.168,col:'0.709804 0.756863 0.792157'},
+  floor:{name:'Concrete',eps:5.24,sig:0.558,col:'0.600000 0.600000 0.600000'},
+  ceil:{name:'Ceilingboard',eps:1.48,sig:0.0337,col:'0.900000 0.900000 0.850000'}};
+const ROOM_H=2.5;
+function roomPolygon(){ // シミュレーターの部屋の輪郭から、棚と設備盤の切り欠きを除いた壁の線
+  const skip=new Set(); [9,10,11,16,17,18].forEach(i=>skip.add(i));
+  const v=PMC.WALLS.filter((w,i)=>!skip.has(i)).map(w=>[w[0],w[1]]);
+  const out=[]; for(const p of v){ const q=out[out.length-1]; if(!q||Math.hypot(q[0]-p[0],q[1]-p[1])>1e-6) out.push(p); }
+  const clean=[]; for(let i=0;i<out.length;i++){ const a=out[(i+out.length-1)%out.length], b=out[i], c=out[(i+1)%out.length];
+    if(Math.abs((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))>1e-9) clean.push(b); }
+  return clean;
+}
+const V3=(x,y,z)=>f10(x)+' '+f10(toWiY(y))+' '+f10(z);
+function faceBlock(pts,mat,ds){ return ['begin_<face> ',...(ds?['double_sided']:[]),'Material '+mat,'nVertices '+pts.length,...pts.map(p=>V3(p[0],p[1],p[2])),'end_<face>']; }
+function colorBlock(c){ return ['begin_<Color> ','ambient '+c+' 1.000000','diffuse '+c+' 1.000000','specular '+c+' 1.000000','emission 0.000000 0.000000 0.000000 0.000000','shininess 50.000000','end_<Color>']; }
+const SCAT=['diffuse_scattering_model none','fields_diffusively_scattered 0.400000','cross_polarized_power 0.400000','directive_alpha 4','directive_beta 4','directive_lambda 0.750000','subdivide_facets yes','reflection_coefficient_options do_not_use'];
+function dielMat(m,num){ return ['begin_<Material> '+m.name,'Material '+num,'DielectricHalfspace',...colorBlock(m.col),...SCAT,'begin_<DielectricLayer> ','conductivity '+m.sig.toExponential(3).replace(/e([+-])(\d)$/,'e$10$2'),'permittivity '+m.eps.toFixed(6),'roughness 0.000e+00','thickness 1.000e-01','end_<DielectricLayer>','end_<Material>']; }
+function flpText(){
+  const P=roomPolygon(), xs=P.map(p=>p[0]), ys=P.map(p=>p[1]); const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+  const L=['Format type:keyword version: 1.1.0','begin_<floorplan> Floor Plan','begin_<reference> ','cartesian','longitude 0.000000000000000','latitude 0.000000000000000','visible yes','terrain','end_<reference>',
+    ...dielMat(WI_MATS.wall,1),...dielMat(WI_MATS.floor,2),...dielMat(WI_MATS.ceil,3),'begin_<structure_group> ','begin_<structure> ','begin_<sub_structure> '];
+  for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; L.push(...faceBlock([[a[0],a[1],0],[b[0],b[1],0],[b[0],b[1],ROOM_H],[a[0],a[1],ROOM_H]],1,true)); }
+  L.push(...faceBlock([[x0,y0,0],[x1,y0,0],[x1,y1,0],[x0,y1,0]],2,true));
+  L.push(...faceBlock([[x0,y0,ROOM_H],[x1,y0,ROOM_H],[x1,y1,ROOM_H],[x0,y1,ROOM_H]],3,true));
+  L.push('end_<sub_structure>','end_<structure>','end_<structure_group>','begin_<editorSettings> ','floor_height 0.0000000000','ceiling_height '+ROOM_H.toFixed(10),'heights_set 1','end_<editorSettings>','end_<floorplan>','');
+  return L.join(CRLF);
+}
+function pecObjectText(name,faces){
+  return ['Format type:keyword version: 1.1.0','begin_<object> '+name,'begin_<reference> ','cartesian','longitude 0.000000000000000','latitude 0.000000000000000','visible no','sealevel','end_<reference>',
+    'begin_<Material> '+name,'Material 1','PEC','thickness 1.000e-03',...colorBlock('1.000000 1.000000 0.000000'),...SCAT,'roughness 0.000e+00','end_<Material>',
+    'begin_<structure_group> ','begin_<structure> ','begin_<sub_structure> ',...faces.flatMap(f=>faceBlock(f,1,true)),'end_<sub_structure>','end_<structure>','end_<structure_group>',
+    'begin_<ControlVectors> ','CVsVisible no','Stippled no','CVsThickness 3','CVxLength 10.0000000000','CVyLength 10.0000000000','CVzLength 10.0000000000','CVsXaxis 1.0000000000 0.0000000000 0.0000000000','CVsZaxis 0.0000000000 0.0000000000 1.0000000000','end_<ControlVectors>','end_<object>',''].join(CRLF);
+}
+function boxFaces(x0,x1,y0,y1,z0,z1){ return [
+  [[x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1]],[[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]],[[x1,y1,z0],[x0,y1,z0],[x0,y1,z1],[x1,y1,z1]],
+  [[x0,y1,z0],[x0,y0,z0],[x0,y0,z1],[x0,y1,z1]],[[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]],[[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]]]; }
+// 金属物のシミュレーター上の寸法。壁や窓と面が重ならないよう数 mm 室内側へ出す（板は 8 mm なので、それより壁寄りにする）
+const ROOM_OBJ={
+  shelf:{file:'kinnzokunotabna',name:'metal_shelf',faces:()=>boxFaces(PMC.SHELF.x1,PMC.SHELF.x2,PMC.SHELF.y1,6.31-0.006,0,2.1),desc:()=>'金属棚 x '+PMC.SHELF.x1.toFixed(2)+'〜'+PMC.SHELF.x2.toFixed(2)+'、y '+PMC.SHELF.y1.toFixed(2)+'〜6.31、高さ 0〜2.1 m'},
+  panel:{file:'setubibann',name:'Equipment_panel',faces:()=>boxFaces(0.003,0.2,4.39,5.09,0,1.4),desc:()=>'設備盤 D壁から 0.2 m 出っ張り、y 4.39〜5.09、高さ 0〜1.4 m'},
+  window:{file:'kinnzoku_window',name:'metal_window',faces:()=>[[[0.39,6.31-0.004,1.0],[6.66,6.31-0.004,1.0],[6.66,6.31-0.004,2.5],[0.39,6.31-0.004,2.5]]],desc:()=>'金属窓 A壁 x 0.39〜6.66、高さ 1.0〜2.5 m'},
+  door:{file:'metal_door',name:'metal_door',faces:()=>[[[2.18,0.004,0],[3.56,0.004,0],[3.56,0.004,2.04],[2.18,0.004,2.04]]],desc:()=>'金属扉 C壁 x 2.18〜3.56、高さ 0〜2.04 m'}};
 function objectText(name,q){
   const A=[q.s.x1,toWiY(q.s.y1)], B=[q.s.x2,toWiY(q.s.y2)];
   const v=(P,z)=>f10(P[0])+' '+f10(P[1])+' '+f10(z);
@@ -876,19 +922,28 @@ function readmeText(st,ant,pow){
   if(!st.plates.length) L.push('  （板なし）');
   L.push('','[WI での手順]',
     '1. WI を閉じて、プロジェクトフォルダをバックアップする。',
+    ...(st.room?['1b. 部屋も置き換える場合: newFlp.flp、kinnzokunotabna.object、setubibann.object、kinnzoku_window.object、metal_door.object を、プロジェクトの同じ名前のファイルと置き換える（.setup の feature に書かれた名前と同じ）。']:[]),
     (st.plates.length?'2. Aluminum_plate1.object 〜 Aluminum_plate'+st.plates.length+'.object を、プロジェクトの同じ名前のファイルと置き換える。':'2. 板なしの配置なので、板はすべて WI 上で非アクティブにする。'),
     ...(st.plates.length<6?['   板が6枚より少ないので、残りの板（Aluminum_plate'+(st.plates.length+1)+' 以降）を WI 上で非アクティブにする。']:[]),
     '3. txrx_after.txrx の中身で、プロジェクトの .txrx（.setup の txrx_sets に書かれた名前）を置き換える。受信点セットが Points 型の P01〜P24 になる。',
     '4. 対処後を計算する。',
     '5. 基準環境は、板をすべて非アクティブにし、.txrx を txrx_base.txrx（ビーム180°）に置き換えて計算する。',
     '6. 出力フォルダの …paths.t001_01.r002.p2m（または …power…）を、基準環境と対処後の両方ともシミュレーターの「読み込む」に入れると、点ごとに比べられる。paths を使うと位相なしで合成するので、実測と比べやすい。','',
-    '[注意] WI の部屋形状（newFlp.flp）と金属棚の位置は書き出していない。棚は WI では x 2.50〜2.95、シミュレーターでは x 2.56〜3.01 で、6 cm ずれている。');
+    ...(st.room?['[部屋] シミュレーターと同じ寸法で書き出した。',
+      '  壁: '+roomPolygon().length+' 面、高さ '+ROOM_H+' m、'+WI_MATS.wall.name+'（比誘電率 '+WI_MATS.wall.eps+'、導電率 '+WI_MATS.wall.sig+' S/m、半無限）',
+      '  床: '+WI_MATS.floor.name+'（比誘電率 '+WI_MATS.floor.eps+'、導電率 '+WI_MATS.floor.sig+' S/m）、天井: '+WI_MATS.ceil.name+'（比誘電率 '+WI_MATS.ceil.eps+'、導電率 '+WI_MATS.ceil.sig+' S/m）。いずれも ITU-R P.2040 の 24.15 GHz での値',
+      ...Object.values(ROOM_OBJ).map(o=>'  '+o.desc()+'（完全導体）'),
+      '  注意: シミュレーターは壁の反射を実測に合わせて +6 dB 強くしているが、この補正は材質では表せないので入れていない。床と天井はシミュレーターにはない。',
+      '  金属物は面が重ならないよう、壁から 3〜6 mm 室内側に置いている（反射板は 8 mm）。']
+     :['[注意] WI の部屋形状（newFlp.flp）と金属棚の位置は書き出していない。棚は WI では x 2.50〜2.95、シミュレーターでは x 2.56〜3.01 で、6 cm ずれている。']));
   return L.join(CRLF)+CRLF;
 }
 $('wiGain').addEventListener('input',syncPowHint); syncPowHint();
 $('wiExport').addEventListener('click',()=>{
   const ant=Math.max(1,Math.round(+$('wiAnt').value||4)), pow=txPower(); const st={beam:state.beam,plates:state.plates};
   const files=st.plates.map((p,i)=>({name:'Aluminum_plate'+(i+1)+'.object',text:objectText('Aluminum_plate'+(i+1),plate3D(p))}));
+  st.room=$('wiRoom').checked;
+  if(st.room){ files.push({name:'newFlp.flp',text:flpText()}); for(const k in ROOM_OBJ){ const o=ROOM_OBJ[k]; files.push({name:o.file+'.object',text:pecObjectText(o.name,o.faces())}); } }
   files.push({name:'txrx_after.txrx',text:txrxText(st.beam,ant,pow)},{name:'txrx_base.txrx',text:txrxText(180,ant,pow)},{name:'README.txt',text:readmeText(st,ant,pow)});
   download(makeZip(files),'PMC7_WI_'+encodeState(st).slice(0,60)+'.zip');
   wiSay('書き出しました（板 '+st.plates.length+' 枚、ビーム '+st.beam+'°）。手順は zip の中の README.txt にあります。');
@@ -996,8 +1051,8 @@ function drawWiGeo(){ if(!gWI) return; gWI.innerHTML='';
 }
 function cm(v){ return Math.round(v*100); }
 function drawWiGeoTable(){ const out=$('wiGeoOut'); if(!wi.geo.length&&!wi.sets.length){ out.innerHTML=''; return; } let h='';
-  const plates=wi.geo.filter(g=>g.kind==='object'&&g.segs.length===1&&g.segs[0].len<1.5);
-  if(plates.length){ h+='<h3>板（面が1枚で横 1.5 m 未満の .object）</h3><div class="tablewrap"><table><tr><th class="l">ファイル</th><th>中心 x</th><th>中心 y</th><th>横 (cm)</th><th>z (m)</th><th class="l">シミュレーターのいまの板と比べると</th></tr>';
+  const plates=wi.geo.filter(g=>g.kind==='object'&&g.segs.length===1&&g.segs[0].len<1.5&&(g.segs[0].z1-g.segs[0].z0)<=0.65);
+  if(plates.length){ h+='<h3>板（面が1枚で、横 1.5 m 未満・縦 65 cm 以下の .object）</h3><div class="tablewrap"><table><tr><th class="l">ファイル</th><th>中心 x</th><th>中心 y</th><th>横 (cm)</th><th>z (m)</th><th class="l">シミュレーターのいまの板と比べると</th></tr>';
     const sim=state.plates.map(p=>plate3D(p));
     for(const g of plates){ const s=g.segs[0], cx=(s.x1+s.x2)/2, cy=(s.y1+s.y2)/2; let note=[];
       if(!inRoom(cx,cy)) note.push('<span class="wiwarn">部屋の外にあります</span>');
