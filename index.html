@@ -247,7 +247,7 @@ svg text{font-family:var(--font)}
         <p class="hint" id="wiPowHint"></p>
         <div class="row"><label><input type="checkbox" id="wiRoom" checked> 部屋と金属物も書き出す（WI プロジェクトの元ファイル）</label></div>
         <button type="button" id="wiExport">WI用ファイルを書き出す（zip）</button>
-        <p class="hint">いまの板の配置（板ごとの .object）、受信点24点と Tx の .txrx（基準環境用と対処後用）、説明書きをまとめて保存します。「部屋と金属物も書き出す」を選ぶと、WI プロジェクト（testHisui）の部屋（newFlp.flp）と金属棚・設備盤・金属窓・金属扉の .object をそのまま入れます。シミュレーターの部屋もこの寸法に合わせてあります。板は中心の高さ 1.6 m、横60 cm なら縦40 cm（横40 cm なら縦60 cm）、完全導体で書き出します。</p>
+        <p class="hint">対処後用（after）と基準環境用（base）のフォルダに分けて、.setup、.txrx（受信点24点と Tx）、板ごとの .object、説明書きをまとめて保存します。.setup は今の WI プロジェクト（testHisui）のものを元にしています。「部屋と金属物も書き出す」を選ぶと、WI プロジェクト（testHisui）の部屋（newFlp.flp）と金属棚・設備盤・金属窓・金属扉の .object をそのまま入れます。シミュレーターの部屋もこの寸法に合わせてあります。板は中心の高さ 1.6 m、横60 cm なら縦40 cm（横40 cm なら縦60 cm）、完全導体で書き出します。</p>
       </div>
       <div class="wibox">
         <h3>読み込む（WI → シミュレーター）</h3>
@@ -837,6 +837,13 @@ function makeZip(files){
 function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); }
 
 // ---- 書き出し ----
+// WI プロジェクト（testHisui）の .setup をそのまま持っておき、板の有無だけ書き換えて出す
+const WI_SETUP_TEXT="Format type:keyword version: 1.1.0\r\nbegin_<project> test1\r\nproject_id 28715\r\nbegin_<globals> \r\nlongitude 0\r\nlatitude 0\r\nend_<globals>\r\nFirstAvailableFeatureNumber 17\r\nFirstAvailableUnknownLayoutNumber 0\r\nFirstAvailableStudyAreaNumber 1\r\nFirstAvailableAntennaNumber 6\r\nFirstAvailableWaveformNumber 4\r\nbegin_<caches> \r\nbegin_<cache> \r\ntype X3DGeometry\r\nfeature -1\r\nfilename ./test1.X3DGeometry.cache\r\nvalid false\r\nend_<cache>\r\nend_<caches>\r\nbegin_<studyarea> PMC7\r\nStudyAreaNumber 0\r\nactive\r\nbegin_<partitioning> \r\npartitioning_type disabled\r\nqueuing_type local\r\nnum_partitions 2\r\nnum_ranks 2\r\nextra_queue_options \r\nend_<partitioning>\r\nbegin_<apg_acceleration> \r\nenabled no\r\nworkflow_mode full\r\nbinary_output_mode per_path_utm\r\nbinary_rate 0 active\r\ndatabase_mode write\r\npath_depth 25\r\nadjacency_distance 10\r\nend_<apg_acceleration>\r\nbegin_<diffuse_scattering> \r\nenabled no\r\ndiffuse_reflections 2\r\ndiffuse_diffractions 1\r\ndiffuse_transmissions 0\r\nfinal_interaction_only yes\r\nspatial_resolution 2\r\nend_<diffuse_scattering>\r\nautoboundary 1\r\nbegin_<model> \r\nx3d\r\nnum_threads 4\r\ninitial_ray_mode uniform_sweep\r\nfoliage_model 2\r\nfoliage_attenuation 1\r\nmobility_platform_time_interval 1\r\nplane_wave_phase_reference automatic\r\n3.5 -3.71886 1.25\r\nbegin_<OutputRequests> \r\nCEF no\r\nComplexImpulseResponse no\r\nDelaySpread yes\r\nDirectionOfArrival no\r\nDirectionOfDeparture no\r\nElectroMagneticFields no\r\nFSPathloss no\r\nFSPower no\r\nMeanDirectionOfArrival no\r\nMeanDirectionOfDeparture no\r\nMeanTimeOfArrival no\r\nPathloss yes\r\nPaths yes\r\nPower yes\r\nTimeOfArrival no\r\nXPathloss no\r\nend_<OutputRequests>\r\nend_<model>\r\nbegin_<boundary> \r\nbegin_<reference> \r\ncartesian\r\nlongitude 0\r\nlatitude 0\r\nvisible no\r\nterrain\r\nend_<reference>\r\nzmin -0.25\r\nzmax 2.75\r\nnVertices 4\r\n-0.350000001490116 -7.78771781921387 0\r\n7.34999561309814 -7.78771781921387 0\r\n7.34999561309814 0.350000001490116 0\r\n-0.350000001490116 0.350000001490116 0\r\nend_<boundary>\r\nbegin_<MonteCarlo> \r\nmonte_carlo_updated no\r\nmonte_carlo_active no\r\nmonte_carlo_iterations 10\r\nmonte_carlo_seed 1\r\nend_<MonteCarlo>\r\nbegin_<MPE> \r\nmpe_is_active inactive\r\nmpestandard controlled\r\nmpe_averaging_time 300\r\nmpe_averaging_time_short 0.1\r\nmpe_user_efield_peak 100000\r\nmpe_user_efield_rms 61.4\r\nmpe_user_hfield_rms 0.163\r\nmpe_user_power_short 10\r\nmpe_user_power 2\r\nend_<MPE>\r\nend_<studyarea>\r\nbegin_<feature> \r\nfeature 1\r\nfloorplan\r\nactive\r\nfilename ./newFlp.flp\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 2\r\nobject\r\nactive\r\nfilename ./kinnzokunotabna.object\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 3\r\nobject\r\nactive\r\nfilename ./setubibann.object\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 5\r\nobject\r\nactive\r\nfilename ./kinnzoku_window.object\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 7\r\nobject\r\nactive\r\nfilename ./Aluminum_plate1.object\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 8\r\nobject\r\nactive\r\nfilename ./Aluminum_plate2.object\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 9\r\nobject\r\nactive\r\nfilename ./Aluminum_plate3.object\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 10\r\nobject\r\nactive\r\nfilename ./Aluminum_plate4.object\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 11\r\nobject\r\nactive\r\nfilename ./Aluminum_plate5.object\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 12\r\nobject\r\nactive\r\nfilename ./Aluminum_plate6.object\r\nend_<feature>\r\nbegin_<feature> \r\nfeature 15\r\nobject\r\nactive\r\nfilename ./metal_door.object\r\nend_<feature>\r\nbegin_<txrx_sets> \r\nfilename ./testHisui.txrx\r\nFirstAvailableTxRxNumber 3\r\nend_<txrx_sets>\r\nFirstAvailableCommSystemNumber 0\r\nbegin_<antenna> Half-wave dipole\r\nantenna 1\r\ntype HalfWaveDipole\r\nwaveform 1\r\npolarization vertical\r\npower_threshold -250\r\ncable_loss 0\r\nVSWR 1\r\ncomponent TotalGain\r\ngain_range 40\r\nshow_arrow no\r\nis_sphere no\r\nend_<antenna>\r\nbegin_<antenna> Horn\r\nantenna 2\r\ntype Horn\r\nwaveform 1\r\npolarization vertical\r\npower_threshold -250\r\ncable_loss 0\r\nVSWR 1\r\ngain 30\r\ncomponent TotalGain\r\ngain_range 40\r\nshow_arrow no\r\nis_sphere no\r\nHornApertureWidth 1.6489\r\nHornApertureHeight 0.8244\r\nFeedApertureWidth 0.1499\r\nFeedApertureHeight 0.0749\r\nLength 1.499\r\nend_<antenna>\r\nbegin_<antenna> Horn\r\nantenna 3\r\ntype Horn\r\nwaveform 1\r\npolarization vertical\r\npower_threshold -250\r\ncable_loss 0\r\nVSWR 1\r\ncomponent TotalGain\r\ngain_range 40\r\nshow_arrow no\r\nis_sphere no\r\nHornApertureWidth 1.6489\r\nHornApertureHeight 0.8244\r\nFeedApertureWidth 0.1499\r\nFeedApertureHeight 0.4749\r\nLength 2.099\r\nend_<antenna>\r\nbegin_<antenna> Horn\r\nantenna 4\r\ntype Horn\r\nwaveform 1\r\npolarization vertical\r\npower_threshold -250\r\ncable_loss 0\r\nVSWR 1\r\ngain 18\r\ncomponent TotalGain\r\ngain_range 40\r\nshow_arrow no\r\nis_sphere no\r\nHornApertureWidth 0.08\r\nHornApertureHeight 0.04\r\nFeedApertureWidth 0.01\r\nFeedApertureHeight 0.005\r\nLength 0.1\r\nend_<antenna>\r\nbegin_<antenna> Omnidirectional\r\nantenna 5\r\ntype omnidirectional\r\nwaveform 1\r\npolarization vertical\r\npower_threshold -250\r\ncable_loss 0\r\nVSWR 1\r\ngain 3\r\ncomponent TotalGain\r\ngain_range 40\r\nshow_arrow no\r\nis_sphere no\r\neplane_hpbw 90\r\neplane_fnbw 180\r\nend_<antenna>\r\nbegin_<Waveform> Sinusoid\r\nSinusoid\r\nwaveform 1\r\nbegin_<FrequencySweep> \r\nSweepType StartIncrementCount\r\nStartValue 10000.000\r\nIncrement 10000.000\r\nCount 10\r\nEndValue 100000.000\r\nend_<FrequencySweep>\r\nCarrierFrequency 24150000000.000\r\nphase 0.000\r\nbandwidth 1000000.000\r\nend_<Waveform>\r\nbegin_<Waveform> Sinusoid\r\nSinusoid\r\nwaveform 3\r\nbegin_<FrequencySweep> \r\nSweepType StartIncrementCount\r\nStartValue 10000.000\r\nIncrement 10000.000\r\nCount 10\r\nEndValue 100000.000\r\nend_<FrequencySweep>\r\nCarrierFrequency 24150000000.000\r\nphase 0.000\r\nbandwidth 1000000.000\r\nend_<Waveform>\r\nFirstAvailableFilterNumber 0\r\nbegin_<requests> \r\ncartesian\r\nsealevel\r\nlocal\r\nCalculationMode New\r\nMaxRenderedPaths 25\r\nFieldAnimationIncrement 10\r\nFieldAnimationTimeAveraged yes\r\nCEF no\r\nComplexImpulseResponse no\r\nDelaySpread yes\r\nFieldAnimation no\r\nDirectionOfArrival no\r\nDirectionOfDeparture no\r\nElectricFieldVsFrequency no\r\nElectricFieldVsTime no\r\nEMFields no\r\nFSPathloss no\r\nFSPower no\r\nInputData no\r\nMeanDirectionOfArrival no\r\nMeanDirectionOfDeparture no\r\nMeanTimeOfArrival no\r\nPathloss yes\r\nPaths yes\r\nPower yes\r\nPowerDelayProfile no\r\nTimeOfArrival no\r\nXPathloss no\r\nTerrainProfile no\r\nend_<requests>\r\nbegin_<Scales> \r\nbegin_<MpeThreshhold> \r\nAutoScaling 0\r\nDrawValues 0\r\nAutoUpdating 0\r\nDiscrete 1\r\nUseGlobalOpacity 1\r\nManualValuesSet 1\r\nClampedHigh 1\r\nClampedLow 1\r\nAlpha 1.000e+00\r\nManualMin 0.000e+00\r\nManualMax 2.000e+02\r\nTextColor 1.000 1.000 1.000\r\nColors 4\r\n0.300 0.000 0.500\r\n0.000 1.000 0.000\r\n1.000 1.000 0.000\r\n1.000 0.000 0.000\r\nPartitionValues \r\n3\r\n0.001 50.000 100.000 \r\nend_<MpeThreshhold>\r\nbegin_<Special1> \r\nAutoScaling 1\r\nDrawValues 0\r\nAutoUpdating 1\r\nDiscrete 0\r\nUseGlobalOpacity 0\r\nManualValuesSet 0\r\nClampedHigh 1\r\nClampedLow 1\r\nAlpha 8.000e-01\r\nManualMin 0.000e+00\r\nManualMax 2.122e-314\r\nTextColor 1.000 1.000 1.000\r\nColors 6\r\n0.300 0.000 0.500\r\n0.000 0.000 1.000\r\n0.000 1.000 0.000\r\n1.000 1.000 0.000\r\n1.000 0.500 0.000\r\n1.000 0.000 0.000\r\nPartitionValues \r\n5\r\n0.000e+00 0.000e+00 0.000e+00 0.000e+00 0.000e+00 \r\nend_<Special1>\r\nend_<Scales>\r\nend_<project>\r\n";
+function setupText(withPlates){
+  let s=WI_SETUP_TEXT;
+  if(!withPlates) s=s.replace(/begin_<feature> \r?\nfeature \d+\r?\nobject\r?\n(?:in)?active\r?\nfilename \.\/Aluminum_plate\d\.object\r?\nend_<feature>\r?\n/g,'');
+  return s;
+}
 const PARKED=i=>{ const y=1.0+0.1*i; return {s:{x1:-0.05,y1:y,x2:-0.05,y2:y+0.01},z0:WI_ZA-0.005,z1:WI_ZA+0.005,h:0.01,cx:-0.05,cy:y+0.005}; };
 function plate3D(p){ const s=PMC.plateSeg(p); const h=0.24/(p.len||0.6); return {s,z0:WI_ZA-h/2,z1:WI_ZA+h/2,h,cx:(s.x1+s.x2)/2,cy:(s.y1+s.y2)/2}; }
 // ---- 部屋の書き出し：WI プロジェクト（testHisui）の部屋ファイルをそのまま入れる ----
@@ -879,15 +886,16 @@ function readmeText(st,ant,pow){
   L.push('[反射板] 完全導体（PEC）、厚さ 0.4 mm、両面');
   st.plates.forEach((p,i)=>{ const q=plate3D(p); L.push('  板'+(i+1)+' '+G[p.wall][4]+'  中心 ('+q.cx.toFixed(3)+', '+q.cy.toFixed(3)+') → WI ('+q.cx.toFixed(3)+', '+toWiY(q.cy).toFixed(3)+')、横 '+Math.round((p.len||0.6)*100)+' cm × 縦 '+Math.round(q.h*100)+' cm、z '+q.z0.toFixed(2)+'〜'+q.z1.toFixed(2)+' m、傾き '+(p.tilt||0)+'°'+(p.off>0?'、壁から '+Math.round(p.off*100)+' cm':'')); });
   if(!st.plates.length) L.push('  （板なし）');
-  L.push('','[WI での手順]',
-    '1. WI を閉じて、プロジェクトフォルダをバックアップする。',
-    ...(st.room?['1b. 部屋も置き換える場合: newFlp.flp、kinnzokunotabna.object、setubibann.object、kinnzoku_window.object、metal_door.object を、プロジェクトの同じ名前のファイルと置き換える（.setup の feature に書かれた名前と同じ）。']:[]),
-    '2. Aluminum_plate1.object 〜 Aluminum_plate6.object を、プロジェクトの同じ名前のファイルと置き換える（6つとも必ず置き換える）。',
-    ...(st.plates.length<6?['   板が6枚より少ないので、使わない板（Aluminum_plate'+(st.plates.length+1)+' 以降）は1 cm 角にして部屋の外（D壁の裏、x = −0.05 m）に置いてある。WI がファイルを探して止まらないようにするためで、計算には影響しない。気になるなら WI 上で非アクティブにしてもよい。']:[]),
-    '3. txrx_after.txrx の中身で、プロジェクトの .txrx（.setup の txrx_sets に書かれた名前）を置き換える。受信点セットが Points 型の P01〜P24 になる。',
-    '4. 対処後を計算する。',
-    '5. 基準環境は、板をすべて非アクティブにし、.txrx を txrx_base.txrx（ビーム180°）に置き換えて計算する。',
-    '6. 出力フォルダの …paths.t001_01.r002.p2m（または …power…）を、基準環境と対処後の両方ともシミュレーターの「読み込む」に入れると、点ごとに比べられる。paths を使うと位相なしで合成するので、実測と比べやすい。','',
+  L.push('','[zip の中身]',
+    '  after/  対処後用: testHisui.setup（板6つあり）、testHisui.txrx（ビーム '+st.beam+'°）、Aluminum_plate1〜6.object'+(st.room?'、部屋と金属物のファイル':''),
+    '  base/   基準環境用: testHisui.setup（板なし）、testHisui.txrx（ビーム 180°）'+(st.room?'、部屋と金属物のファイル':''),
+    ...(st.plates.length<6?['  板が6枚より少ないので、使わない板（Aluminum_plate'+(st.plates.length+1)+' 以降）は1 cm 角にして部屋の外（D壁の裏、x = −0.05 m）に置いてある。計算には影響しない。']:[]),
+    '','[WI での手順]',
+    '1. 今の WI プロジェクトフォルダ（testHisui.setup があるフォルダ）を2つコピーして、「対処後用」と「基準環境用」にする。',
+    '   空のフォルダではなく、今のプロジェクトのコピーを使うこと（反射回数などの計算設定は testHisui.PMC7.xml などの別ファイルにあるため）。',
+    '2. 対処後用のフォルダに after の中身を全部コピーして上書きする。基準環境用のフォルダには base の中身を上書きする。',
+    '3. それぞれのフォルダで testHisui.setup を WI で開いて計算する。',
+    '4. それぞれの出力フォルダ（PMC7）の …paths.t001_01.r002.p2m（または …power…）を、シミュレーターの「読み込む」の基準環境と対処後に入れると、点ごとに比べられる。paths を使うと位相なしで合成するので、実測と比べやすい。','',
     ...(st.room?['[部屋] WI プロジェクト（testHisui）の部屋ファイルをそのまま入れた（newFlp.flp と金属棚・設備盤・金属窓・金属扉の .object）。シミュレーターの部屋もこれと同じ寸法にしてある。',
       '  壁と床: Plaster（比誘電率 2.5、導電率 0.02 S/m、半無限）。金属物は完全導体。',
       '  注意: 天井の面は材質番号 9 を使っているが、newFlp.flp の中に番号 9 の定義がない。WI 上で天井の材質を確認すること。',
@@ -898,14 +906,20 @@ function readmeText(st,ant,pow){
 $('wiGain').addEventListener('input',syncPowHint); syncPowHint();
 $('wiExport').addEventListener('click',()=>{
   const ant=Math.max(1,Math.round(+$('wiAnt').value||4)), pow=txPower(); const st={beam:state.beam,plates:state.plates};
-  const files=st.plates.map((p,i)=>({name:'Aluminum_plate'+(i+1)+'.object',text:objectText('Aluminum_plate'+(i+1),plate3D(p))}));
-  // WI の .setup は Aluminum_plate1〜6 を必ず読みに行くので、使わない板も1 cm 角で部屋の外（D壁の裏）に置いて書き出す
-  for(let i=st.plates.length;i<6;i++) files.push({name:'Aluminum_plate'+(i+1)+'.object',text:objectText('Aluminum_plate'+(i+1),PARKED(i))});
   st.room=$('wiRoom').checked;
-  if(st.room){ for(const nm in WI_ROOM_FILES) files.push({name:nm,text:WI_ROOM_FILES[nm]}); }
-  files.push({name:'txrx_after.txrx',text:txrxText(st.beam,ant,pow)},{name:'txrx_base.txrx',text:txrxText(180,ant,pow)},{name:'README.txt',text:readmeText(st,ant,pow)});
+  const files=[];
+  const room=dir=>{ if(st.room) for(const nm in WI_ROOM_FILES) files.push({name:dir+nm,text:WI_ROOM_FILES[nm]}); };
+  // 対処後: 板6つ（WI の .setup は Aluminum_plate1〜6 を読みに行くので、使わない板は1 cm 角で部屋の外に置く）
+  files.push({name:'after/testHisui.setup',text:setupText(true)},{name:'after/testHisui.txrx',text:txrxText(st.beam,ant,pow)});
+  st.plates.forEach((p,i)=>files.push({name:'after/Aluminum_plate'+(i+1)+'.object',text:objectText('Aluminum_plate'+(i+1),plate3D(p))}));
+  for(let i=st.plates.length;i<6;i++) files.push({name:'after/Aluminum_plate'+(i+1)+'.object',text:objectText('Aluminum_plate'+(i+1),PARKED(i))});
+  room('after/');
+  // 基準環境: 板なしの .setup、ビーム180°
+  files.push({name:'base/testHisui.setup',text:setupText(false)},{name:'base/testHisui.txrx',text:txrxText(180,ant,pow)});
+  room('base/');
+  files.push({name:'README.txt',text:readmeText(st,ant,pow)});
   download(makeZip(files),'PMC7_WI_'+encodeState(st).slice(0,60)+'.zip');
-  wiSay('書き出しました（板 '+st.plates.length+' 枚、ビーム '+st.beam+'°）。手順は zip の中の README.txt にあります。');
+  wiSay('書き出しました（板 '+st.plates.length+' 枚、ビーム '+st.beam+'°）。対処後用は after、基準環境用は base のフォルダに入っています。手順は README.txt にあります。');
 });
 
 // ---- 読み込み ----
