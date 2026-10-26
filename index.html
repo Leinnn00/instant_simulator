@@ -245,9 +245,9 @@ svg text{font-family:var(--font)}
         <div class="row"><label for="wiAnt">送信アンテナの番号</label><input type="number" id="wiAnt" class="wnum" value="4" min="1" step="1"></div>
         <div class="row"><label for="wiGain">そのアンテナの最大利得</label><input type="number" id="wiGain" class="wnum" value="18" step="0.1"><span>dBi</span></div>
         <p class="hint" id="wiPowHint"></p>
-        <div class="row"><label><input type="checkbox" id="wiRoom" checked> 部屋と金属物も書き出す（シミュレーターの形で）</label></div>
+        <div class="row"><label><input type="checkbox" id="wiRoom" checked> 部屋と金属物も書き出す（WI プロジェクトの元ファイル）</label></div>
         <button type="button" id="wiExport">WI用ファイルを書き出す（zip）</button>
-        <p class="hint">いまの板の配置（板ごとの .object）、受信点24点と Tx の .txrx（基準環境用と対処後用）、説明書きをまとめて保存します。「部屋と金属物も書き出す」を選ぶと、部屋（newFlp.flp）と金属棚・設備盤・金属窓・金属扉の .object も、シミュレーターと同じ寸法で入ります。ファイル名は今の WI プロジェクトと同じです。板は中心の高さ 1.6 m、横60 cm なら縦40 cm（横40 cm なら縦60 cm）、完全導体で書き出します。</p>
+        <p class="hint">いまの板の配置（板ごとの .object）、受信点24点と Tx の .txrx（基準環境用と対処後用）、説明書きをまとめて保存します。「部屋と金属物も書き出す」を選ぶと、WI プロジェクト（testHisui）の部屋（newFlp.flp）と金属棚・設備盤・金属窓・金属扉の .object をそのまま入れます。シミュレーターの部屋もこの寸法に合わせてあります。板は中心の高さ 1.6 m、横60 cm なら縦40 cm（横40 cm なら縦60 cm）、完全導体で書き出します。</p>
       </div>
       <div class="wibox">
         <h3>読み込む（WI → シミュレーター）</h3>
@@ -282,8 +282,8 @@ svg text{font-family:var(--font)}
 const PMC = (function(){
   const F = 24.15e9, LAM = 299792458/F, EIRP = 32, GRX = 3;
   const TX = {x:6.04, y:2.0};
-  const SHELF = {x1:2.56, x2:3.01, y1:2.71};
-  const CORNERS = [{x:3.01,y:2.71},{x:2.56,y:2.71}];
+  const SHELF = {x1:2.50, x2:2.95, y1:2.71};
+  const CORNERS = [{x:2.95,y:2.71},{x:2.50,y:2.71}];
   const MEAS = [-56.04,-56.43,-58.24,-59.17,-65.46,-62.68,-58.59,-60.40,-62.43,-60.45,-60.74,-52.75,-54.12,-51.75,-58.21,-63.59,-65.70,-59.32,-65.38,-62.19,-62.01,-64.81,-58.25,-54.17];
   const RX = [];
   (function(){
@@ -296,18 +296,18 @@ const PMC = (function(){
     [0.35,0,2.18,0,'g',1,'C'],[2.18,0,3.56,0,'m',1,'C'],[3.56,0,5.46,0,'g',1,'C'],
     [5.46,0,5.46,0.85,'g',0,''],[5.46,0.85,7.04,0.85,'g',1,'C'],
     [7.04,0.85,7.04,5.99,'g',0,'B'],[7.04,5.99,6.66,5.99,'g',0,''],[6.66,5.99,6.66,6.31,'g',0,''],
-    [6.66,6.31,3.01,6.31,'m',0,'A'],
-    [3.01,6.31,3.01,2.71,'s',0,''],[3.01,2.71,2.56,2.71,'s',0,''],[2.56,2.71,2.56,6.31,'s',0,''],
-    [2.56,6.31,0.39,6.31,'m',1,'A'],
-    [0.39,6.31,0.39,5.99,'g',0,''],[0.39,5.99,0,5.99,'g',0,''],
-    [0,5.99,0,5.09,'g',1,'D'],
-    [0,5.09,0.2,5.09,'m',0,''],[0.2,5.09,0.2,4.39,'m',0,''],[0.2,4.39,0,4.39,'m',0,''],
-    [0,4.39,0,0.70,'g',1,'D'],
-    [0,0.70,0.35,0.70,'g',0,''],[0.35,0.70,0.35,0,'g',0,'']
+    [6.66,6.31,2.95,6.31,'m',0,'A'],
+    [2.95,6.31,2.95,2.71,'s',0,''],[2.95,2.71,2.50,2.71,'s',0,''],[2.50,2.71,2.50,6.31,'s',0,''],
+    [2.50,6.31,0.35,6.31,'m',1,'A'],
+    [0.35,6.31,0.35,5.99,'g',0,''],[0.35,5.99,0,5.99,'g',0,''],
+    [0,5.99,0,5.10,'g',1,'D'],
+    [0,5.10,0.2,5.10,'m',0,''],[0.2,5.10,0.2,4.40,'m',0,''],[0.2,4.40,0,4.40,'m',0,''],
+    [0,4.40,0,0.69,'g',1,'D'],
+    [0,0.69,0.35,0.69,'g',0,''],[0.35,0.69,0.35,0,'g',0,'']
   ];
   const NAMES = ["C壁", "金属扉", "C壁", "柱", "C壁(B寄り)", "B壁", "柱", "柱", "A壁(窓)", "棚", "棚", "棚", "A壁(窓)", "柱", "柱", "D壁", "設備盤", "設備盤", "設備盤", "D壁", "柱", "柱"];
   // 板を貼れる壁（室内から見て反時計回り）: [x1,y1,x2,y2,名前,座標軸]
-  const GROUPS = [[0.35,0,5.46,0,'C壁','x'],[5.46,0.85,7.04,0.85,'C壁(B寄り)','x'],[2.56,6.31,0.39,6.31,'A壁左','x'],[0,5.99,0,5.09,'D壁(上)','y'],[0,4.39,0,0.70,'D壁','y']];
+  const GROUPS = [[0.35,0,5.46,0,'C壁','x',0.010],[5.46,0.85,7.04,0.85,'C壁(B寄り)','x',0.008],[2.50,6.31,0.35,6.31,'A壁左','x',0.013],[0,5.99,0,5.10,'D壁(上)','y',0.008],[0,4.40,0,0.69,'D壁','y',0.008]];
   let PATTERN = null;
   function setPattern(p){ PATTERN = p; }
   function patGain(deg){ // deg: ビーム中心からの角度
@@ -328,13 +328,13 @@ const PMC = (function(){
     const w=GROUPS[p.wall]; const L=p.len||0.6;
     const wx=w[2]-w[0], wy=w[3]-w[1], wl=Math.hypot(wx,wy), ux=wx/wl, uy=wy/wl;
     const nx=-uy, ny=ux; // 部屋内側の法線（頂点は反時計回り）
-    const off=0.008+Math.max(0,Math.min(1.5,p.off||0)); const th=(p.tilt||0)*Math.PI/180;
+    const base=w[6]||0.008; const off=base+Math.max(0,Math.min(1.5,p.off||0)); const th=(p.tilt||0)*Math.PI/180;
     const s0=Math.max(0,Math.min(wl-L*Math.cos(th),p.s));
     let ax,ay,bx,by;
     const c=Math.cos(th), sn=Math.sin(Math.abs(th));
     if(th>=0){ ax=w[0]+ux*s0; ay=w[1]+uy*s0; bx=ax+ux*L*c+nx*L*sn; by=ay+uy*L*c+ny*L*sn; }
     else { bx=w[0]+ux*(s0+L*c); by=w[1]+uy*(s0+L*c); ax=bx-ux*L*c+nx*L*sn; ay=by-uy*L*c+ny*L*sn; }
-    return {x1:ax+nx*off,y1:ay+ny*off,x2:bx+nx*off,y2:by+ny*off,mat:'m',occ:true,plate:true,d:(off-0.008)+L*sn,L};
+    return {x1:ax+nx*off,y1:ay+ny*off,x2:bx+nx*off,y2:by+ny*off,mat:'m',occ:true,plate:true,d:(off-base)+L*sn,L};
   }
   function buildScene(plates){
     const segs = WALLS.map(w=>({x1:w[0],y1:w[1],x2:w[2],y2:w[3],mat:w[4]==='s'?'m':w[4],occ:w[4]!=='s'}));
@@ -517,7 +517,7 @@ function buildPlan(){
   el('polygon',{points:poly},cp);
   el('polygon',{points:poly,fill:'var(--surface)',stroke:'none'},plan);
   gHeat=el('g',{'clip-path':'url(#roomclip)'},plan);
-  el('rect',{x:X(2.56),y:Y(6.31),width:45,height:360,fill:'var(--gyp)','fill-opacity':.35,stroke:'none'},plan);
+  el('rect',{x:X(PMC.SHELF.x1),y:Y(6.31),width:(PMC.SHELF.x2-PMC.SHELF.x1)*100,height:(6.31-PMC.SHELF.y1)*100,fill:'var(--gyp)','fill-opacity':.35,stroke:'none'},plan);
   PMC.WALLS.forEach((w,i)=>{
     const metal=w[4]!=='g';
     el('line',{x1:X(w[0]),y1:Y(w[1]),x2:X(w[2]),y2:Y(w[3]),stroke:metal?'var(--wall)':'var(--gyp)','stroke-width':metal?5:2.5,'stroke-linecap':'square'},plan);
@@ -525,7 +525,7 @@ function buildPlan(){
   G.forEach(w=>{ const nx=-(w[3]-w[1]), ny=(w[2]-w[0]); const l=Math.hypot(nx,ny); const ox=-nx/l*7, oy=ny/l*7;
     el('line',{x1:X(w[0])+ox,y1:Y(w[1])+oy,x2:X(w[2])+ox,y2:Y(w[3])+oy,stroke:'var(--install)','stroke-width':3,'stroke-opacity':.8},plan);});
   const lab=(t,x,y,a)=>{const e=el('text',{x,y,'font-size':17,fill:'var(--ink2)','text-anchor':a||'middle'},plan); e.textContent=t;};
-  lab('A壁（金属窓）',X(4.8),Y(6.31)-14); lab('B壁',X(7.04)+12,Y(3.4),'start'); lab('C壁',X(1.3),Y(0)+30); lab('金属扉',X(2.87),Y(0)+30); lab('D壁',X(0)-14,Y(2.2),'end'); lab('棚',X(2.785),Y(4.6));
+  lab('A壁（金属窓）',X(4.8),Y(6.31)-14); lab('B壁',X(7.04)+12,Y(3.4),'start'); lab('C壁',X(1.3),Y(0)+30); lab('金属扉',X(2.87),Y(0)+30); lab('D壁',X(0)-14,Y(2.2),'end'); lab('棚',X((PMC.SHELF.x1+PMC.SHELF.x2)/2),Y(4.6));
   lab('設備盤',X(0)-14,Y(4.68),'end');
   for(let x=0;x<=7;x++){ el('line',{x1:X(x),x2:X(x),y1:Y(0)+42,y2:Y(0)+50,stroke:'var(--muted)','stroke-width':1.5},plan); const e=el('text',{x:X(x),y:Y(0)+66,'font-size':13,'text-anchor':'middle',fill:'var(--muted)','font-family':'var(--mono)'},plan); e.textContent=x; }
   for(let y=0;y<=6;y++){ el('line',{x1:-66,x2:-58,y1:Y(y),y2:Y(y),stroke:'var(--muted)','stroke-width':1.5},plan); const e=el('text',{x:-70,y:Y(y)+4.5,'font-size':13,'text-anchor':'end',fill:'var(--muted)','font-family':'var(--mono)'},plan); e.textContent=y; }
@@ -838,51 +838,9 @@ function download(blob,name){ const a=document.createElement('a'); a.href=URL.cr
 
 // ---- 書き出し ----
 function plate3D(p){ const s=PMC.plateSeg(p); const h=0.24/(p.len||0.6); return {s,z0:WI_ZA-h/2,z1:WI_ZA+h/2,h,cx:(s.x1+s.x2)/2,cy:(s.y1+s.y2)/2}; }
-// ---- 部屋の書き出し（シミュレーターの形をそのまま WI へ） ----
-// 材質は ITU-R P.2040 の 24.15 GHz での値。壁はシミュレーターの石膏ボードと同じ（実測合わせの +6 dB 補正は材質では表せないので入れない）
-const WI_MATS={
-  wall:{name:'Plaster',eps:2.73,sig:0.168,col:'0.709804 0.756863 0.792157'},
-  floor:{name:'Concrete',eps:5.24,sig:0.558,col:'0.600000 0.600000 0.600000'},
-  ceil:{name:'Ceilingboard',eps:1.48,sig:0.0337,col:'0.900000 0.900000 0.850000'}};
-const ROOM_H=2.5;
-function roomPolygon(){ // シミュレーターの部屋の輪郭から、棚と設備盤の切り欠きを除いた壁の線
-  const skip=new Set(); [9,10,11,16,17,18].forEach(i=>skip.add(i));
-  const v=PMC.WALLS.filter((w,i)=>!skip.has(i)).map(w=>[w[0],w[1]]);
-  const out=[]; for(const p of v){ const q=out[out.length-1]; if(!q||Math.hypot(q[0]-p[0],q[1]-p[1])>1e-6) out.push(p); }
-  const clean=[]; for(let i=0;i<out.length;i++){ const a=out[(i+out.length-1)%out.length], b=out[i], c=out[(i+1)%out.length];
-    if(Math.abs((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))>1e-9) clean.push(b); }
-  return clean;
-}
-const V3=(x,y,z)=>f10(x)+' '+f10(toWiY(y))+' '+f10(z);
-function faceBlock(pts,mat,ds){ return ['begin_<face> ',...(ds?['double_sided']:[]),'Material '+mat,'nVertices '+pts.length,...pts.map(p=>V3(p[0],p[1],p[2])),'end_<face>']; }
-function colorBlock(c){ return ['begin_<Color> ','ambient '+c+' 1.000000','diffuse '+c+' 1.000000','specular '+c+' 1.000000','emission 0.000000 0.000000 0.000000 0.000000','shininess 50.000000','end_<Color>']; }
-const SCAT=['diffuse_scattering_model none','fields_diffusively_scattered 0.400000','cross_polarized_power 0.400000','directive_alpha 4','directive_beta 4','directive_lambda 0.750000','subdivide_facets yes','reflection_coefficient_options do_not_use'];
-function dielMat(m,num){ return ['begin_<Material> '+m.name,'Material '+num,'DielectricHalfspace',...colorBlock(m.col),...SCAT,'begin_<DielectricLayer> ','conductivity '+m.sig.toExponential(3).replace(/e([+-])(\d)$/,'e$10$2'),'permittivity '+m.eps.toFixed(6),'roughness 0.000e+00','thickness 1.000e-01','end_<DielectricLayer>','end_<Material>']; }
-function flpText(){
-  const P=roomPolygon(), xs=P.map(p=>p[0]), ys=P.map(p=>p[1]); const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
-  const L=['Format type:keyword version: 1.1.0','begin_<floorplan> Floor Plan','begin_<reference> ','cartesian','longitude 0.000000000000000','latitude 0.000000000000000','visible yes','terrain','end_<reference>',
-    ...dielMat(WI_MATS.wall,1),...dielMat(WI_MATS.floor,2),...dielMat(WI_MATS.ceil,3),'begin_<structure_group> ','begin_<structure> ','begin_<sub_structure> '];
-  for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; L.push(...faceBlock([[a[0],a[1],0],[b[0],b[1],0],[b[0],b[1],ROOM_H],[a[0],a[1],ROOM_H]],1,true)); }
-  L.push(...faceBlock([[x0,y0,0],[x1,y0,0],[x1,y1,0],[x0,y1,0]],2,true));
-  L.push(...faceBlock([[x0,y0,ROOM_H],[x1,y0,ROOM_H],[x1,y1,ROOM_H],[x0,y1,ROOM_H]],3,true));
-  L.push('end_<sub_structure>','end_<structure>','end_<structure_group>','begin_<editorSettings> ','floor_height 0.0000000000','ceiling_height '+ROOM_H.toFixed(10),'heights_set 1','end_<editorSettings>','end_<floorplan>','');
-  return L.join(CRLF);
-}
-function pecObjectText(name,faces){
-  return ['Format type:keyword version: 1.1.0','begin_<object> '+name,'begin_<reference> ','cartesian','longitude 0.000000000000000','latitude 0.000000000000000','visible no','sealevel','end_<reference>',
-    'begin_<Material> '+name,'Material 1','PEC','thickness 1.000e-03',...colorBlock('1.000000 1.000000 0.000000'),...SCAT,'roughness 0.000e+00','end_<Material>',
-    'begin_<structure_group> ','begin_<structure> ','begin_<sub_structure> ',...faces.flatMap(f=>faceBlock(f,1,true)),'end_<sub_structure>','end_<structure>','end_<structure_group>',
-    'begin_<ControlVectors> ','CVsVisible no','Stippled no','CVsThickness 3','CVxLength 10.0000000000','CVyLength 10.0000000000','CVzLength 10.0000000000','CVsXaxis 1.0000000000 0.0000000000 0.0000000000','CVsZaxis 0.0000000000 0.0000000000 1.0000000000','end_<ControlVectors>','end_<object>',''].join(CRLF);
-}
-function boxFaces(x0,x1,y0,y1,z0,z1){ return [
-  [[x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1]],[[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]],[[x1,y1,z0],[x0,y1,z0],[x0,y1,z1],[x1,y1,z1]],
-  [[x0,y1,z0],[x0,y0,z0],[x0,y0,z1],[x0,y1,z1]],[[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]],[[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]]]; }
-// 金属物のシミュレーター上の寸法。壁や窓と面が重ならないよう数 mm 室内側へ出す（板は 8 mm なので、それより壁寄りにする）
-const ROOM_OBJ={
-  shelf:{file:'kinnzokunotabna',name:'metal_shelf',faces:()=>boxFaces(PMC.SHELF.x1,PMC.SHELF.x2,PMC.SHELF.y1,6.31-0.006,0,2.1),desc:()=>'金属棚 x '+PMC.SHELF.x1.toFixed(2)+'〜'+PMC.SHELF.x2.toFixed(2)+'、y '+PMC.SHELF.y1.toFixed(2)+'〜6.31、高さ 0〜2.1 m'},
-  panel:{file:'setubibann',name:'Equipment_panel',faces:()=>boxFaces(0.003,0.2,4.39,5.09,0,1.4),desc:()=>'設備盤 D壁から 0.2 m 出っ張り、y 4.39〜5.09、高さ 0〜1.4 m'},
-  window:{file:'kinnzoku_window',name:'metal_window',faces:()=>[[[0.39,6.31-0.004,1.0],[6.66,6.31-0.004,1.0],[6.66,6.31-0.004,2.5],[0.39,6.31-0.004,2.5]]],desc:()=>'金属窓 A壁 x 0.39〜6.66、高さ 1.0〜2.5 m'},
-  door:{file:'metal_door',name:'metal_door',faces:()=>[[[2.18,0.004,0],[3.56,0.004,0],[3.56,0.004,2.04],[2.18,0.004,2.04]]],desc:()=>'金属扉 C壁 x 2.18〜3.56、高さ 0〜2.04 m'}};
+// ---- 部屋の書き出し：WI プロジェクト（testHisui）の部屋ファイルをそのまま入れる ----
+// シミュレーターの部屋もこの寸法に合わせてある（棚 x 2.50〜2.95、設備盤 y 4.40〜5.10 など）
+const WI_ROOM_FILES={"newFlp.flp": "Format type:keyword version: 1.1.0\r\nbegin_<floorplan> Floor Plan\r\nbegin_<reference> \r\ncartesian\r\nlongitude 0.000000000000000\r\nlatitude 0.000000000000000\r\nvisible yes\r\nterrain\r\nend_<reference>\r\nbegin_<Material> Plaster\r\nMaterial 1\r\nDielectricHalfspace\r\nbegin_<Color> \r\nambient 0.709804 0.756863 0.792157 1.000000\r\ndiffuse 0.709804 0.756863 0.792157 1.000000\r\nspecular 0.709804 0.756863 0.792157 1.000000\r\nemission 0.000000 0.000000 0.000000 0.000000\r\nshininess 50.000000\r\nend_<Color>\r\ndiffuse_scattering_model none\r\nfields_diffusively_scattered 0.400000\r\ncross_polarized_power 0.400000\r\ndirective_alpha 4\r\ndirective_beta 4\r\ndirective_lambda 0.750000\r\nsubdivide_facets yes\r\nreflection_coefficient_options do_not_use\r\nbegin_<DielectricLayer> \r\nconductivity 2.000e-02\r\npermittivity 2.500000\r\nroughness 1.000e-03\r\nthickness 1.000e-01\r\nend_<DielectricLayer>\r\nend_<Material>\r\nbegin_<Material> Freespace\r\nMaterial 6\r\nFreespace\r\nthickness 3.000e-01\r\nbegin_<Color> \r\nambient 0.000000 0.000000 0.000000 1.000000\r\ndiffuse 0.000000 0.000000 0.000000 1.000000\r\nspecular 0.000000 0.000000 0.000000 1.000000\r\nemission 0.000000 0.000000 0.000000 0.000000\r\nshininess 50.000000\r\nend_<Color>\r\nend_<Material>\r\nbegin_<structure_group> \r\nbegin_<structure> \r\nbegin_<sub_structure> \r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.0000000000 -0.3199999630 0.0000000000\r\n0.3499999344 -0.3199999630 0.0000000000\r\n0.3499999344 -0.3199999630 2.5000000000\r\n0.0000000000 -0.3199999630 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.3499999344 -0.3199999630 0.0000000000\r\n0.3499999344 0.0000000000 0.0000000000\r\n0.3499999344 0.0000000000 2.5000000000\r\n0.3499999344 -0.3199999630 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n6.6600575447 0.0000000000 0.0000000000\r\n6.6600575447 -0.3199999630 0.0000000000\r\n6.6600575447 -0.3199999630 2.5000000000\r\n6.6600575447 0.0000000000 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n7.0400662422 -5.4600300789 0.0000000000\r\n5.4600300789 -5.4600300789 0.0000000000\r\n5.4600300789 -5.4600300789 2.5000000000\r\n7.0400662422 -5.4600300789 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n5.4600300789 -5.4600300789 0.0000000000\r\n5.4600300789 -6.3100495338 0.0000000000\r\n5.4600300789 -6.3100495338 2.5000000000\r\n5.4600300789 -5.4600300789 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.3499999344 -6.3100495338 0.0000000000\r\n0.3499999344 -5.6200337410 0.0000000000\r\n0.3499999344 -5.6200337410 2.5000000000\r\n0.3499999344 -6.3100495338 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.3499999344 -5.6200337410 0.0000000000\r\n0.0000000000 -5.6200337410 0.0000000000\r\n0.0000000000 -5.6200337410 2.5000000000\r\n0.3499999344 -5.6200337410 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.0000000000 -6.3100495338 0.0000000000\r\n7.0400662422 -6.3100495338 0.0000000000\r\n7.0400662422 0.0000000000 0.0000000000\r\n0.0000000000 0.0000000000 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\ninvisible\r\ndouble_sided\r\nMaterial 9\r\nnVertices 4\r\n7.0400662422 0.0000000000 2.5000000000\r\n7.0400662422 -6.3100495338 2.5000000000\r\n0.0000000000 -6.3100495338 2.5000000000\r\n0.0000000000 0.0000000000 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ninvisible\r\ndouble_sided\r\nMaterial 9\r\nnVertices 4\r\n2.9499983788 0.0000000000 2.5000000000\r\n2.9499983788 -3.5999977589 2.5000000000\r\n2.4999988079 -3.5999977589 2.5000000000\r\n2.4999988079 0.0000000000 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n7.0400662422 -5.4600300789 0.0000000000\r\n7.0400662422 -0.3199999630 0.0000000000\r\n7.0400662422 -0.3199999630 2.5000000000\r\n7.0400662422 -5.4600300789 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.0000000000 -0.3199999630 0.0000000000\r\n0.0000000000 -1.2099992037 0.0000000000\r\n0.0000000000 -1.2099992037 2.5000000000\r\n0.0000000000 -0.3199999630 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.0000000000 -1.9099985361 0.0000000000\r\n0.0000000000 -5.6200337410 0.0000000000\r\n0.0000000000 -5.6200337410 2.5000000000\r\n0.0000000000 -1.9099985361 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ninvisible\r\ndouble_sided\r\nMaterial 9\r\nnVertices 4\r\n0.0000000000 -1.2099992037 2.5000000000\r\n0.2000000179 -1.2099992037 2.5000000000\r\n0.2000000179 -1.9099985361 2.5000000000\r\n0.0000000000 -1.9099985361 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.0000000000 -1.2099992037 0.0000000000\r\n0.0000000000 -1.9099985361 0.0000000000\r\n0.0000000000 -1.9099985361 2.5000000000\r\n0.0000000000 -1.2099992037 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ninvisible\r\ndouble_sided\r\nMaterial 9\r\nnVertices 4\r\n0.0000000000 -1.2099992037 2.5000000000\r\n0.2000000179 -1.2099992037 2.5000000000\r\n0.2000000179 -1.9099985361 2.5000000000\r\n0.0000000000 -1.9099985361 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ninvisible\r\ndouble_sided\r\nMaterial 9\r\nnVertices 4\r\n-0.1000000015 0.1000000015 2.5000000000\r\n7.0999956131 0.1000000015 2.5000000000\r\n7.0999956131 -6.3999962807 2.5000000000\r\n-0.1000000015 -6.3999962807 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n6.6600575447 -0.3199999630 0.0000000000\r\n7.0400662422 -0.3199999630 0.0000000000\r\n7.0400662422 -0.3199999630 2.5000000000\r\n6.6600575447 -0.3199999630 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.0000000000 0.0000000000 0.0000000000\r\n6.9999957085 0.0000000000 0.0000000000\r\n6.9999957085 0.0000000000 2.5000000000\r\n0.0000000000 0.0000000000 2.5000000000\r\nend_<face>\r\nbegin_<face> \r\ndouble_sided\r\nMaterial 1\r\nnVertices 4\r\n0.3499999344 -6.3100495338 0.0000000000\r\n5.4600300789 -6.3100495338 0.0000000000\r\n5.4600300789 -6.3100495338 2.5000000000\r\n0.3499999344 -6.3100495338 2.5000000000\r\nend_<face>\r\nend_<sub_structure>\r\nend_<structure>\r\nend_<structure_group>\r\nbegin_<editorSettings> \r\nfloor_height 0.0000000000\r\nceiling_height 2.5000000000\r\nheights_set 1\r\nend_<editorSettings>\r\nend_<floorplan>\r\n", "kinnzokunotabna.object": "Format type:keyword version: 1.1.0\r\nbegin_<object> metal_shelf\r\nbegin_<reference> \r\ncartesian\r\nlongitude 0.000000000000000\r\nlatitude 0.000000000000000\r\nvisible no\r\nsealevel\r\nend_<reference>\r\nbegin_<Material> metal_shelf\r\nMaterial 1\r\nPEC\r\nthickness 1.000e-03\r\nbegin_<Color> \r\nambient 1.000000 1.000000 0.000000 1.000000\r\ndiffuse 1.000000 1.000000 0.000000 1.000000\r\nspecular 1.000000 1.000000 0.000000 1.000000\r\nemission 0.000000 0.000000 0.000000 0.000000\r\nshininess 50.000000\r\nend_<Color>\r\ndiffuse_scattering_model none\r\nfields_diffusively_scattered 0.400000\r\ncross_polarized_power 0.400000\r\ndirective_alpha 4\r\ndirective_beta 4\r\ndirective_lambda 0.750000\r\nsubdivide_facets yes\r\nreflection_coefficient_options do_not_use\r\nroughness 0.000e+00\r\nend_<Material>\r\nbegin_<structure_group> \r\nbegin_<structure> \r\nbegin_<sub_structure> \r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n2.4999988079 0.0000000000 2.0999999046\r\n2.9499983788 0.0000000000 2.0999999046\r\n2.9499983788 0.0000000000 0.0000000000\r\n2.4999988079 0.0000000000 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n2.4999988079 -3.5999977589 2.0999999046\r\n2.4999988079 0.0000000000 2.0999999046\r\n2.4999988079 0.0000000000 0.0000000000\r\n2.4999988079 -3.5999977589 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n2.9499983788 -3.5999977589 2.0999999046\r\n2.4999988079 -3.5999977589 2.0999999046\r\n2.4999988079 -3.5999977589 0.0000000000\r\n2.9499983788 -3.5999977589 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n2.9499983788 0.0000000000 2.0999999046\r\n2.9499983788 -3.5999977589 2.0999999046\r\n2.9499983788 -3.5999977589 0.0000000000\r\n2.9499983788 0.0000000000 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n2.4999988079 0.0000000000 2.0999999046\r\n2.4999988079 -3.5999977589 2.0999999046\r\n2.9499983788 -3.5999977589 2.0999999046\r\n2.9499983788 0.0000000000 2.0999999046\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n2.9499983788 0.0000000000 0.0000000000\r\n2.9499983788 -3.5999977589 0.0000000000\r\n2.4999988079 -3.5999977589 0.0000000000\r\n2.4999988079 0.0000000000 0.0000000000\r\nend_<face>\r\nend_<sub_structure>\r\nend_<structure>\r\nend_<structure_group>\r\nbegin_<ControlVectors> \r\nCVsVisible no\r\nStippled yes\r\nCVsThickness 3\r\nCVxLength 10.0000000000\r\nCVyLength 10.0000000000\r\nCVzLength 10.0000000000\r\nCVsXaxis 1.0000000000 0.0000000000 0.0000000000\r\nCVsZaxis 0.0000000000 0.0000000000 1.0000000000\r\nend_<ControlVectors>\r\nend_<object>\r\n", "setubibann.object": "Format type:keyword version: 1.1.0\r\nbegin_<object> Equipment_panel\r\nbegin_<reference> \r\ncartesian\r\nlongitude 0.000000000000000\r\nlatitude 0.000000000000000\r\nvisible no\r\nsealevel\r\nend_<reference>\r\nbegin_<Material> Equipment_panel\r\nMaterial 0\r\nPEC\r\nthickness 1.000e-03\r\nbegin_<Color> \r\nambient 1.000000 1.000000 0.000000 1.000000\r\ndiffuse 1.000000 1.000000 0.000000 1.000000\r\nspecular 1.000000 1.000000 0.000000 1.000000\r\nemission 0.000000 0.000000 0.000000 0.000000\r\nshininess 50.000000\r\nend_<Color>\r\ndiffuse_scattering_model none\r\nfields_diffusively_scattered 0.400000\r\ncross_polarized_power 0.400000\r\ndirective_alpha 4\r\ndirective_beta 4\r\ndirective_lambda 0.750000\r\nsubdivide_facets yes\r\nreflection_coefficient_options do_not_use\r\nroughness 0.000e+00\r\nend_<Material>\r\nbegin_<structure_group> \r\nbegin_<structure> \r\nbegin_<sub_structure> \r\nbegin_<face> \r\nMaterial 0\r\nnVertices 4\r\n0.0000000000 -1.9099985361 1.3999999762\r\n0.0000000000 -1.2099992037 1.3999999762\r\n0.0000000000 -1.2099992037 0.0000000000\r\n0.0000000000 -1.9099985361 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 0\r\nnVertices 4\r\n0.2000000179 -1.9099985361 1.3999999762\r\n0.0000000000 -1.9099985361 1.3999999762\r\n0.0000000000 -1.9099985361 0.0000000000\r\n0.2000000179 -1.9099985361 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 0\r\nnVertices 4\r\n0.2000000179 -1.2099992037 1.3999999762\r\n0.2000000179 -1.9099985361 1.3999999762\r\n0.2000000179 -1.9099985361 0.0000000000\r\n0.2000000179 -1.2099992037 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 0\r\nnVertices 4\r\n0.0000000000 -1.2099992037 1.3999999762\r\n0.2000000179 -1.2099992037 1.3999999762\r\n0.2000000179 -1.2099992037 0.0000000000\r\n0.0000000000 -1.2099992037 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 0\r\nnVertices 4\r\n0.0000000000 -1.9099985361 1.3999999762\r\n0.2000000179 -1.9099985361 1.3999999762\r\n0.2000000179 -1.2099992037 1.3999999762\r\n0.0000000000 -1.2099992037 1.3999999762\r\nend_<face>\r\nbegin_<face> \r\nMaterial 0\r\nnVertices 4\r\n0.0000000000 -1.2099992037 0.0000000000\r\n0.2000000179 -1.2099992037 0.0000000000\r\n0.2000000179 -1.9099985361 0.0000000000\r\n0.0000000000 -1.9099985361 0.0000000000\r\nend_<face>\r\nend_<sub_structure>\r\nend_<structure>\r\nend_<structure_group>\r\nbegin_<ControlVectors> \r\nCVsVisible no\r\nStippled yes\r\nCVsThickness 3\r\nCVxLength 10.0000000000\r\nCVyLength 10.0000000000\r\nCVzLength 10.0000000000\r\nCVsXaxis 1.0000000000 0.0000000000 0.0000000000\r\nCVsZaxis 0.0000000000 0.0000000000 1.0000000000\r\nend_<ControlVectors>\r\nend_<object>\r\n", "kinnzoku_window.object": "Format type:keyword version: 1.1.0\r\nbegin_<object> metal_window\r\nbegin_<reference> \r\ncartesian\r\nlongitude 0.000000000000000\r\nlatitude 0.000000000000000\r\nvisible no\r\nsealevel\r\nend_<reference>\r\nbegin_<Material> metal_window\r\nMaterial 2\r\nPEC\r\nthickness 2.000e-03\r\nbegin_<Color> \r\nambient 1.000000 1.000000 0.000000 1.000000\r\ndiffuse 1.000000 1.000000 0.000000 1.000000\r\nspecular 1.000000 1.000000 0.000000 1.000000\r\nemission 0.000000 0.000000 0.000000 0.000000\r\nshininess 50.000000\r\nend_<Color>\r\ndiffuse_scattering_model none\r\nfields_diffusively_scattered 0.400000\r\ncross_polarized_power 0.400000\r\ndirective_alpha 4\r\ndirective_beta 4\r\ndirective_lambda 0.750000\r\nsubdivide_facets yes\r\nreflection_coefficient_options do_not_use\r\nroughness 0.000e+00\r\nend_<Material>\r\nbegin_<structure_group> \r\nbegin_<structure> \r\nbegin_<sub_structure> \r\nbegin_<face> \r\ndouble_sided\r\nMaterial 2\r\nnVertices 4\r\n0.3112196865 -0.0099431996 1.0000000000\r\n0.3112196865 -0.0099431996 2.5000000000\r\n6.7112156691 -0.0099431996 2.5000000000\r\n6.7112156691 -0.0099431996 1.0000000000\r\nend_<face>\r\nend_<sub_structure>\r\nend_<structure>\r\nend_<structure_group>\r\nbegin_<ControlVectors> \r\nCVsVisible no\r\nStippled no\r\nCVsThickness 3\r\nCVxLength 10.0000000000\r\nCVyLength 10.0000000000\r\nCVzLength 10.0000000000\r\nCVsXaxis 1.0000000000 0.0000000000 0.0000000000\r\nCVsZaxis 0.0000000000 0.0000000000 1.0000000000\r\nend_<ControlVectors>\r\nend_<object>\r\n", "metal_door.object": "Format type:keyword version: 1.1.0\r\nbegin_<object> metal_door\r\nbegin_<reference> \r\ncartesian\r\nlongitude 0.000000000000000\r\nlatitude 0.000000000000000\r\nvisible no\r\nsealevel\r\nend_<reference>\r\nbegin_<Material> metal_door\r\nMaterial 1\r\nPEC\r\nthickness 2.000e-03\r\nbegin_<Color> \r\nambient 1.000000 1.000000 0.000000 1.000000\r\ndiffuse 1.000000 1.000000 0.000000 1.000000\r\nspecular 1.000000 1.000000 0.000000 1.000000\r\nemission 0.000000 0.000000 0.000000 0.000000\r\nshininess 50.000000\r\nend_<Color>\r\ndiffuse_scattering_model none\r\nfields_diffusively_scattered 0.400000\r\ncross_polarized_power 0.400000\r\ndirective_alpha 4\r\ndirective_beta 4\r\ndirective_lambda 0.750000\r\nsubdivide_facets yes\r\nreflection_coefficient_options do_not_use\r\nroughness 0.000e+00\r\nend_<Material>\r\nbegin_<structure_group> \r\nbegin_<structure> \r\nbegin_<sub_structure> \r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n2.1801414206 -6.3033921596 2.0399999619\r\n2.1801423742 -6.3033292170 2.0399999619\r\n2.1801423742 -6.3033292170 0.0000000000\r\n2.1801414206 -6.3033921596 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n2.1799983978 -6.3236312942 2.0399999619\r\n2.1801414206 -6.3033921596 2.0399999619\r\n2.1801414206 -6.3033921596 0.0000000000\r\n2.1799983978 -6.3236312942 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n3.5599970818 -6.3236312942 2.0399999619\r\n2.1799983978 -6.3236312942 2.0399999619\r\n2.1799983978 -6.3236312942 0.0000000000\r\n3.5599970818 -6.3236312942 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n3.5601423695 -6.3033292170 2.0399999619\r\n3.5599970818 -6.3236312942 2.0399999619\r\n3.5599970818 -6.3236312942 0.0000000000\r\n3.5601423695 -6.3033292170 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 4\r\n2.1801423742 -6.3033292170 2.0399999619\r\n3.5601423695 -6.3033292170 2.0399999619\r\n3.5601423695 -6.3033292170 0.0000000000\r\n2.1801423742 -6.3033292170 0.0000000000\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 5\r\n2.1801414206 -6.3033921596 2.0399999619\r\n2.1799983978 -6.3236312942 2.0399999619\r\n3.5599970818 -6.3236312942 2.0399999619\r\n3.5601423695 -6.3033292170 2.0399999619\r\n2.1801423742 -6.3033292170 2.0399999619\r\nend_<face>\r\nbegin_<face> \r\nMaterial 1\r\nnVertices 5\r\n2.1801423742 -6.3033292170 0.0000000000\r\n3.5601423695 -6.3033292170 0.0000000000\r\n3.5599970818 -6.3236312942 0.0000000000\r\n2.1799983978 -6.3236312942 0.0000000000\r\n2.1801414206 -6.3033921596 0.0000000000\r\nend_<face>\r\nend_<sub_structure>\r\nend_<structure>\r\nend_<structure_group>\r\nbegin_<ControlVectors> \r\nCVsVisible no\r\nStippled no\r\nCVsThickness 3\r\nCVxLength 10.0000000000\r\nCVyLength 10.0000000000\r\nCVzLength 10.0000000000\r\nCVsXaxis 1.0000000000 0.0000000000 0.0000000000\r\nCVsZaxis 0.0000000000 0.0000000000 1.0000000000\r\nend_<ControlVectors>\r\nend_<object>\r\n"};
 function objectText(name,q){
   const A=[q.s.x1,toWiY(q.s.y1)], B=[q.s.x2,toWiY(q.s.y2)];
   const v=(P,z)=>f10(P[0])+' '+f10(P[1])+' '+f10(z);
@@ -929,13 +887,11 @@ function readmeText(st,ant,pow){
     '4. 対処後を計算する。',
     '5. 基準環境は、板をすべて非アクティブにし、.txrx を txrx_base.txrx（ビーム180°）に置き換えて計算する。',
     '6. 出力フォルダの …paths.t001_01.r002.p2m（または …power…）を、基準環境と対処後の両方ともシミュレーターの「読み込む」に入れると、点ごとに比べられる。paths を使うと位相なしで合成するので、実測と比べやすい。','',
-    ...(st.room?['[部屋] シミュレーターと同じ寸法で書き出した。',
-      '  壁: '+roomPolygon().length+' 面、高さ '+ROOM_H+' m、'+WI_MATS.wall.name+'（比誘電率 '+WI_MATS.wall.eps+'、導電率 '+WI_MATS.wall.sig+' S/m、半無限）',
-      '  床: '+WI_MATS.floor.name+'（比誘電率 '+WI_MATS.floor.eps+'、導電率 '+WI_MATS.floor.sig+' S/m）、天井: '+WI_MATS.ceil.name+'（比誘電率 '+WI_MATS.ceil.eps+'、導電率 '+WI_MATS.ceil.sig+' S/m）。いずれも ITU-R P.2040 の 24.15 GHz での値',
-      ...Object.values(ROOM_OBJ).map(o=>'  '+o.desc()+'（完全導体）'),
-      '  注意: シミュレーターは壁の反射を実測に合わせて +6 dB 強くしているが、この補正は材質では表せないので入れていない。床と天井はシミュレーターにはない。',
-      '  金属物は面が重ならないよう、壁から 3〜6 mm 室内側に置いている（反射板は 8 mm）。']
-     :['[注意] WI の部屋形状（newFlp.flp）と金属棚の位置は書き出していない。棚は WI では x 2.50〜2.95、シミュレーターでは x 2.56〜3.01 で、6 cm ずれている。']));
+    ...(st.room?['[部屋] WI プロジェクト（testHisui）の部屋ファイルをそのまま入れた（newFlp.flp と金属棚・設備盤・金属窓・金属扉の .object）。シミュレーターの部屋もこれと同じ寸法にしてある。',
+      '  壁と床: Plaster（比誘電率 2.5、導電率 0.02 S/m、半無限）。金属物は完全導体。',
+      '  注意: 天井の面は材質番号 9 を使っているが、newFlp.flp の中に番号 9 の定義がない。WI 上で天井の材質を確認すること。',
+      '  注意: シミュレーターは壁を石膏ボード（比誘電率 2.73）として反射を実測合わせで +6 dB 強くしているが、WI の壁はこの補正なし。']
+     :['[部屋] 部屋のファイルは入れていない。WI プロジェクトにある部屋をそのまま使う（シミュレーターと同じ寸法）。']));
   return L.join(CRLF)+CRLF;
 }
 $('wiGain').addEventListener('input',syncPowHint); syncPowHint();
@@ -943,7 +899,7 @@ $('wiExport').addEventListener('click',()=>{
   const ant=Math.max(1,Math.round(+$('wiAnt').value||4)), pow=txPower(); const st={beam:state.beam,plates:state.plates};
   const files=st.plates.map((p,i)=>({name:'Aluminum_plate'+(i+1)+'.object',text:objectText('Aluminum_plate'+(i+1),plate3D(p))}));
   st.room=$('wiRoom').checked;
-  if(st.room){ files.push({name:'newFlp.flp',text:flpText()}); for(const k in ROOM_OBJ){ const o=ROOM_OBJ[k]; files.push({name:o.file+'.object',text:pecObjectText(o.name,o.faces())}); } }
+  if(st.room){ for(const nm in WI_ROOM_FILES) files.push({name:nm,text:WI_ROOM_FILES[nm]}); }
   files.push({name:'txrx_after.txrx',text:txrxText(st.beam,ant,pow)},{name:'txrx_base.txrx',text:txrxText(180,ant,pow)},{name:'README.txt',text:readmeText(st,ant,pow)});
   download(makeZip(files),'PMC7_WI_'+encodeState(st).slice(0,60)+'.zip');
   wiSay('書き出しました（板 '+st.plates.length+' 枚、ビーム '+st.beam+'°）。手順は zip の中の README.txt にあります。');
