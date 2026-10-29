@@ -118,7 +118,7 @@ th:first-child,td:first-child{text-align:left}
           <div class="tip" id="tip1" hidden></div>
         </div>
         <div class="legend">
-          <span><i class="ramp"></i><span id="gScale"></span></span>
+          <span><i class="ramp" id="gRamp"></i><span id="gScale"></span></span>
           <span><i class="ring"></i><span id="gRing">下位6点</span></span>
           <span>上がA壁、左がD壁</span>
         </div>
@@ -234,6 +234,8 @@ function view(){
 // ---- 色（RdBu）: 中央 = 白、強い・良い = 赤、弱い・悪い = 青 ----
 const RDBU=[[33,102,172],[103,169,207],[209,229,240],[247,247,247],[253,219,199],[239,138,98],[178,24,43]];
 function rdbu(v,mid,span){ let t=(v-mid+span)/(2*span); t=Math.max(0,Math.min(1,t))*6; const i=Math.min(5,Math.floor(t)), f=t-i, a=RDBU[i], b=RDBU[i+1]; return [0,1,2].map(k=>a[k]+(b[k]-a[k])*f); }
+function seqRed(t){ t=Math.max(0,Math.min(1,t))*3; const P=[[247,247,247],[253,219,199],[239,138,98],[178,24,43]]; const i=Math.min(2,Math.floor(t)), f=t-i; return [0,1,2].map(k=>P[i][k]+(P[i+1][k]-P[i][k])*f); }
+function seqBlue(t){ t=Math.max(0,Math.min(1,t))*3; const P=[[247,247,247],[209,229,240],[103,169,207],[33,102,172]]; const i=Math.min(2,Math.floor(t)), f=t-i; return [0,1,2].map(k=>P[i][k]+(P[i+1][k]-P[i][k])*f); }
 const rgb=c=>'rgb('+c.map(Math.round).join(',')+')';
 const txtOn=c=>(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255>0.55?'#0f1720':'#ffffff';
 
@@ -277,11 +279,20 @@ function drawGrid(v){
   const diff=S.mode==='diff';
   const val=diff?v.p1.map((x,i)=>x-v.p0[i]):v.p1;
   const mid=diff?0:mean(val), span=diff?10:6;
+  // 差の色: 全部プラス（または全部マイナス）なら、いちばん小さい点〜大きい点で白→赤（白→青）に塗り分ける。
+  // プラスとマイナスが混ざるときは 0 を白にして、大きいほうの絶対値で振り切る。
+  let colorOf, scaleText, rampCss;
+  if(!diff){ colorOf=x=>rdbu(x,mid,span); scaleText='弱い ← 24点の平均 '+fmt(mid)+' dBm（白）→ 強い（±6 dB で最も濃い色）'; rampCss='linear-gradient(90deg,#2166ac,#d1e5f0,#f7f7f7,#fddbc7,#b2182b)'; }
+  else { const lo=Math.min(...val), hi=Math.max(...val);
+    if(lo>=0){ const a=lo, b=Math.max(hi,lo+1); colorOf=x=>seqRed((x-a)/(b-a)); scaleText='全点で良くなった。改善が小さい '+sfmt(a)+' dB（白）→ 大きい '+sfmt(b)+' dB（濃い赤）'; rampCss='linear-gradient(90deg,#f7f7f7,#fddbc7,#ef8a62,#b2182b)'; }
+    else if(hi<=0){ const a=hi, b=Math.min(lo,hi-1); colorOf=x=>seqBlue((x-a)/(b-a)); scaleText='全点で悪くなった。悪化が小さい '+sfmt(a)+' dB（白）→ 大きい '+sfmt(b)+' dB（濃い青）'; rampCss='linear-gradient(90deg,#f7f7f7,#d1e5f0,#67a9cf,#2166ac)'; }
+    else { const m=Math.max(-lo,hi); colorOf=x=>rdbu(x,0,m); scaleText='悪くなった '+sfmt(-m)+' dB ← 0（白）→ '+sfmt(m)+' dB 良くなった'; rampCss='linear-gradient(90deg,#2166ac,#d1e5f0,#f7f7f7,#fddbc7,#b2182b)'; } }
+  $('gRamp').style.background=rampCss;
   const stName=v.show==='after'?'対処後':'WI の基準環境';
   $('gTitle').textContent=diff?('24点の差（'+stName+' − '+v.refLabel+'）'):('24点の受信電力（'+stName+'）');
-  $('gScale').textContent=diff?'悪くなった −10 dB ← 0（白）→ +10 dB 良くなった':'弱い ← 24点の平均 '+fmt(mid)+' dBm（白）→ 強い（±6 dB で最も濃い色）';
+  $('gScale').textContent=scaleText;
   $('gRing').textContent=stName+'の下位6点';
-  RX.forEach((r,i)=>{ const cx=gx(r.x), cy=gy(r.y), c=rdbu(val[i],mid,span), tc=txtOn(c);
+  RX.forEach((r,i)=>{ const cx=gx(r.x), cy=gy(r.y), c=colorOf(val[i]), tc=txtOn(c);
     if(v.low.has(i)) el('circle',{cx,cy,r:27,fill:'none',stroke:'var(--ink)','stroke-width':3.5},svg);
     el('circle',{cx,cy,r:23,fill:rgb(c),stroke:'var(--line)','stroke-width':1},svg);
     const a=el('text',{x:cx,y:cy-3,'font-size':11.5,'font-weight':700,'text-anchor':'middle',fill:tc},svg); a.textContent=pname(i);
